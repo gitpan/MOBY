@@ -1,4 +1,4 @@
-#$Id: Config.pm,v 1.1 2008/02/21 00:21:27 kawas Exp $
+#$Id: Config.pm,v 1.4 2008/04/15 00:26:29 mwilkinson Exp $
 
 =head1 NAME
 
@@ -45,9 +45,6 @@ use vars '$VERSION', '@ISA', '@EXPORT', '$CONFIG';
 @EXPORT = ('$CONFIG');
 {
 
-	#Encapsulated class data
-	#___________________________________________________________
-	#ATTRIBUTES
 	my %_attr_data =    #         DEFAULT    	ACCESSIBILITY
 	  (
 		mobycentral      => [ undef, 'read/write' ],
@@ -59,6 +56,33 @@ use vars '$VERSION', '@ISA', '@EXPORT', '$CONFIG';
 		primitive_datatypes => [["String", "Integer", "DateTime", "Float", "Boolean"], 'read'],
 
 	  );
+
+	my $file = $ENV{MOBY_CENTRAL_CONFIG};
+	( -e $file ) || die "MOBY Configuration file $file doesn't exist $!\n";
+	chomp $file;
+	if ( ( -e $file ) && ( !( -d $file ) ) ) {
+	    open IN, $file
+		or die
+		"can't open MOBY Configuration file $file for unknown reasons: $!\n";
+	}
+	my @sections = split /(\[\s*\S+\s*\][^\[]*)/s, join "", <IN>;
+
+	#print STDERR "split into @sections\n";
+	foreach my $section (@sections) {
+
+		#print STDERR "calling MOBY::dbConfig\n";
+		my $dbConfig =
+		  MOBY::dbConfig->new( section => $section )
+		  ; # this is an object full of strings, no actual connections.  It represents the information in the config file
+		next unless $dbConfig;
+		my $dbname = $dbConfig->section_title;
+		next unless $dbname;
+		$_attr_data{$dbname} = [$dbConfig, 'read'];  # something like $_attr_data{mobycentral} = [$config, 'read']
+	}
+
+	#Encapsulated class data
+	#___________________________________________________________
+	#ATTRIBUTES
 
 	#_____________________________________________________________
 	# METHODS, to operate on encapsulated class data
@@ -99,30 +123,8 @@ sub new {
 			$self->{$attrname} = $self->_default_for($attrname);
 		}
 	}
-	my $file = $ENV{MOBY_CENTRAL_CONFIG};
-	( -e $file ) || die "MOBY Configuration file $file doesn't exist $!\n";
-	chomp $file;
-	if ( ( -e $file ) && ( !( -d $file ) ) ) {
-	    open IN, $file
-		or die
-		"can't open MOBY Configuration file $file for unknown reasons: $!\n";
-	}
-	my @sections = split /(\[\s*\S+\s*\][^\[]*)/s, join "", <IN>;
-
-	#print STDERR "split into @sections\n";
-	foreach my $section (@sections) {
-
-		#print STDERR "calling MOBY::dbConfig\n";
-		my $dbConfig =
-		  MOBY::dbConfig->new( section => $section )
-		  ; # this is an object full of strings, no actual connections.  It represents the information in the config file
-		next unless $dbConfig;
-		my $dbname = $dbConfig->section_title;
-		next unless $dbname;
-
+#	return $self if $self->mobycentral->{'dbname'};  # if it has been set, then just return it
 #print STDERR "setting the COnfig dbConfig for the title $dbname with object $dbConfig\n\n";
-		$self->{$dbname} = $dbConfig;
-	}
 	$CONFIG = $self;
 	return $self;
 }

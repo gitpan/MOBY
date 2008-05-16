@@ -199,7 +199,7 @@ use strict;
 use XML::LibXML;
 use Exporter;
 
-our @ISA = qw(Exporter);
+use base qw(Exporter);
 
 our @EXPORT = qw(
 	LSAE_BASE_EVENT

@@ -4,7 +4,7 @@
 # Author: Edward Kawas <edward.kawas@gmail.com>,
 # For copyright and disclaimer see below.
 #
-# $Id: service_tester.pl,v 1.1 2008/02/21 00:21:27 kawas Exp $
+# $Id: service_tester.pl,v 1.3 2008/05/14 14:01:19 kawas Exp $
 #
 # BETA
 #
@@ -35,6 +35,8 @@ use MOBY::Config;
 use MOBY::Client::Central;
 use SOAP::Lite;
 use XML::LibXML;
+use HTTP::Request::Common qw(POST);
+use LWP::UserAgent;
 # Because of this library, cannot run on windows
 use IPC::Shareable;
 
@@ -68,7 +70,7 @@ open( OUT, ">>$DIRECTORY/$FILENAME" ) || die("Cannot Open File '$DIRECTORY/$FILE
 close OUT;
 
 # create some shared variables
-my $alive_handle = tie %ALIVE, 'IPC::Shareable', undef, { destroy => 'yes' };
+my $alive_handle = tie %ALIVE, 'IPC::Shareable', undef, { } or die "\n\tCouldn't tie shared variable:\n$!";
 
 # create the central client and get all service providers once
 my $central =
@@ -116,28 +118,40 @@ foreach my $cat (@CATEGORIES) {
 				} if $url =~ /localhost/;
 	
 				# child - stuff to do goes here
-				#print "Calling: " . $auth . "," . $name . "\n";
-				my $soap =
-				  SOAP::Lite->uri("http://biomoby.org/")
-				  ->proxy( $url, timeout => $TIMEOUT )->on_fault(
-					sub {
-						my $soap = shift;
-						my $res  = shift;
-	
-						#TODO add to DEAD hash ...
-						$alive_handle->shlock();
-						$ALIVE{$auth} = () if not exists $ALIVE{$auth};
-						push @{ $ALIVE{$auth} }, {name=>$name, alive=>undef};
-						$alive_handle->shunlock();
-	
-						#print "\t" . $auth . "," . $name . " ~isAlive\n";
-						exit(0);
-					}
-				  );
-
+				my $out = undef;
 				my $input = _empty_input();
-				my $out   =
-				  $soap->$name( SOAP::Data->type( 'string' => "$input" ) )->result;
+
+				#print "Calling: " . $auth . "," . $name . "\n";
+				do {
+					  my $soap =
+					  SOAP::Lite->uri("http://biomoby.org/")
+					  ->proxy( $url, timeout => $TIMEOUT )->on_fault(
+						sub {
+							my $soap = shift;
+							my $res  = shift;
+		
+							#TODO add to DEAD hash ...
+							$alive_handle->shlock();
+							$ALIVE{$auth} = () if not exists $ALIVE{$auth};
+							push @{ $ALIVE{$auth} }, {name=>$name, alive=>undef};
+							$alive_handle->shunlock();
+		
+							#print "\t" . $auth . "," . $name . " ~isAlive\n";
+							exit(0);
+						}
+					  );
+	
+					$out   =
+					  $soap->$name( SOAP::Data->type( 'string' => "$input" ) )->result;
+				} unless $cat eq 'cgi';
+				# test cgi services
+				do {
+					 my $ua = LWP::UserAgent->new;
+					 my $req = POST $opt_c, [ data => $input];
+					 $req = $ua->request($req);
+					 $out =  $req->content if $req->is_success;
+				} if $cat eq 'cgi';
+
 				do {
 					#TODO add to ALIVE hash ...
 					#print "\t" . $auth . "," . $name . " isAlive\n";
@@ -188,7 +202,14 @@ for my $auth ( sort keys %ALIVE ) {
 	$root->appendChild($element);
 }
 
-IPC::Shareable->clean_up_all;
+# clean up the shared memory
+eval {
+  warn "Attempting to clean up shared memory ...";
+  IPC::Shareable->clean_up_all;
+  warn "Shared memory cleaned up successfully";
+};
+
+warn "There was a problem cleaning up shared memory segments:\n$@\n" if $@;
 
 open( OUT, ">$DIRECTORY/$FILENAME" ) || die("Cannot Open File $DIRECTORY/$FILENAME $!");
 print OUT $doc->toString(1);

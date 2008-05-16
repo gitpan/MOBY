@@ -1,5 +1,34 @@
 Revision history for Perl extension MOBY.
 
-1.00  
+1.04
+	- fixed bug in MOBY::Client::Central::DUMP that resulted
+	  in an error ('Not an ARRAY reference at 
+	  MOBY/Client/Central.pm line 1927') being raised.
+	  Thanks to Pieter Neerincx for finding the bug and a
+	  solution.
+	  
+	- fixed bug that allowed service types to be registered 
+	  with empty ISA relationships.
+	
+	- MOBY::Config now only reads the config file once instead
+	  of numerous times.
+	
+	- Attempted fix of shared memory bugs with service_tester.pl
+	  Shared memory wasn't being recycled properly and led to the
+	  server running the script to run out of memory segments,
+	  causing the script to run, but not to produce any output. 
+	  
+	- MOBY WSRF implementation was not WSRF compliant in some 
+	  points, and the same happened with sample code. Both the 
+	  libraries and the generated WSDL have been fixed.
+	
+	- Added checks for those cases where RDF is wanted for a 
+	  particular ontology that is empty. Instead of dying, 
+	  we now return an empty document (as should be expected).
+	  
+	- Fixed a bug in the schema for secondary inputs. The schema
+	  was missing the column 'description'
+
+1.00
 	- CVS version of MOBY released to the world via CPAN!
 

@@ -1,4 +1,4 @@
-#$Id: Central.pm,v 1.2 2008/02/21 17:15:40 kawas Exp $
+#$Id: Central.pm,v 1.5 2008/05/14 14:06:23 kawas Exp $
 
 =head1 NAME
 
@@ -793,6 +793,10 @@ sub _registerServiceTypePayload {
 	  && &_LOG(
 "got $type, $desc, \%relationships, $email, $auth from registerServiceTypePayload\n"
 	  );
+	  
+	return
+		"FAILED! a service type '$type' was found to have no relationships\n" if keys( %relationships ) == 0 ;
+
 	return ( $type, $desc, \%relationships, $email, $auth );
 }
 
@@ -1098,7 +1102,7 @@ sub _deregisterNamespacePayload {
  Input XML :
 
       <registerService>
-         <Category>moby</Category> <!-- one of 'moby', 'moby-async', 'doc-literal', 'doc-literal-async'; 'moby' and 'moby-async' are RPC encoded -->
+         <Category>moby</Category> <!-- one of 'moby', 'moby-async', 'doc-literal', 'doc-literal-async', 'cgi'; 'moby' and 'moby-async' are RPC encoded -->
          <serviceName>YourServiceNameHere</serviceName>
          <serviceType>TypeOntologyTerm</serviceType>
          <signatureURL>http://path.to/your/signature/RDF.rdf</sisgnatureURL>
@@ -1326,14 +1330,14 @@ sub registerService {
 	$error .= "missing Category \n"    unless defined $Category;
 	return &_error( "malformed payload $error\n\n", "" ) if ($error);
 	return &_error(
-		"Category may take the (case sensitive) values 'moby', 'moby-async', 'post', 'doc-literal', and 'doc-literal-async', \n",
+		"Category may take the (case sensitive) values 'moby', 'moby-async', 'cgi', 'doc-literal', and 'doc-literal-async', \n",
 		""
 	  )
 	  unless (
 		( $Category eq "wsdl" )
 		|| ( $Category eq "moby" )
 		|| ( $Category eq "moby-async" )
-		|| ( $Category eq "post" )
+		|| ( $Category eq "cgi" )
 	    || ( $Category eq "doc-literal" )
 		|| ( $Category eq "doc-literal-async"));
 
@@ -3270,7 +3274,7 @@ sub _getServiceWSDL {
 	# do substitutions
     my $serviceType = $SI->category;
     my $wsdl;
-	if ($serviceType eq "post"){
+	if ($serviceType eq "cgi"){
 	    $wsdl = &_doPostWSDLReplacement(@_)
 	} elsif ($serviceType eq "moby"){
 	    $wsdl = &_doMobyWSDLReplacement(@_)
@@ -4069,7 +4073,7 @@ $WSDL_TEMPLATE = <<END;
 END
 
 
-# MOBY POST service template
+# MOBY CGI service template
 
 $WSDL_POST_TEMPLATE = <<END2;
 <?xml version="1.0"?>
@@ -4260,7 +4264,7 @@ $WSDL_ASYNC_TEMPLATE = <<END;
    <wsdl:binding name="WSRF_Operations_Binding" type="tns:WSRF_Operations_PortType">
       <soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>
       <wsdl:operation name="GetResourceProperty">
-         <soap:operation />
+         <soap:operation soapAction="http://docs.oasis-open.org/wsrf/rpw-2/GetResourceProperty/GetResourcePropertyRequest" />
          <wsdl:input>
             <soap:body use="literal"/>
          </wsdl:input>
@@ -4278,7 +4282,7 @@ $WSDL_ASYNC_TEMPLATE = <<END;
          </wsdl:fault>
       </wsdl:operation>
       <wsdl:operation name="GetMultipleResourceProperties">
-         <soap:operation />
+         <soap:operation soapAction="http://docs.oasis-open.org/wsrf/rpw-2/GetMultipleResourceProperties/GetMultipleResourcePropertiesRequest" />
          <wsdl:input>
             <soap:body use="literal"/>
          </wsdl:input>
@@ -4296,7 +4300,7 @@ $WSDL_ASYNC_TEMPLATE = <<END;
          </wsdl:fault>
       </wsdl:operation>
       <wsdl:operation name="Destroy">
-         <soap:operation />
+         <soap:operation soapAction="http://docs.oasis-open.org/wsrf/rlw-2/ImmediateResourceTermination/DestroyRequest" />
          <wsdl:input>
             <soap:body use="literal"/>
          </wsdl:input>

@@ -17,7 +17,7 @@ INB GN2 (CNIO, Spain).
 
 =head1 DESCRIPTION
 
-Provides a class to invoke asynchronous services. Its use is very similar to
+It provides a class to invoke asynchronous services. Its use is very similar to
 MOBY::Client::Service, but it also provides additional methods in order to
 have more control over the asynchronous service execution.
 
@@ -133,8 +133,7 @@ use MOBY::Async::WSRF;
 use MOBY::Async::LSAE;
 use MOBY::CommonSubs qw(:all);
 use MOBY::Client::Service;
-use vars qw(@ISA);
-@ISA = qw(MOBY::Client::Service);
+use base qw(MOBY::Client::Service);
 
 
 sub new {
@@ -428,14 +427,22 @@ sub poll {
 	
 	my $searchTerm = "";
 	foreach my $queryID (@queryIDs) {
-		$searchTerm .= "<wsrp:ResourceProperty xmlns:wsrp=\"$WSRF::Constants::WSRP\">";
-		$searchTerm .= "status_".$queryID;
+		#$searchTerm .= "<wsrp:ResourceProperty xmlns:wsrp='$WSRF::Constants::WSRP' xmlns:mobyws='$WSRF::Constants::MOBY'>";
+		#$searchTerm .= "mobyws:status_".$queryID;
+		#$searchTerm .= "</wsrp:ResourceProperty>"; 
+		$searchTerm .= "<wsrp:ResourceProperty xmlns:wsrp='$WSRF::Constants::WSRP' xmlns:mobyws='$WSRF::Constants::MOBY'>";
+		$searchTerm .= "mobyws:status_".$queryID;
 		$searchTerm .= "</wsrp:ResourceProperty>"; 
 	}
 	
+#	my $ans = WSRF::Lite
+#		-> uri($WSRF::Constants::WSRPW)
+#		-> on_action( sub {sprintf '%s/%s', @_} )
+#		-> wsaddress($EPR)
+#		-> GetMultipleResourceProperties(SOAP::Data->value($searchTerm)->type('xml'));
 	my $ans = WSRF::Lite
 		-> uri($WSRF::Constants::WSRP)
-		-> on_action( sub {sprintf '%s/%s', @_} )
+		-> on_action( sub {sprintf '%s/%s/%sRequest', $WSRF::Constants::WSRPW,$_[1],$_[1]} )
 		-> wsaddress($EPR)
 		-> GetMultipleResourceProperties(SOAP::Data->value($searchTerm)->type('xml'));
 	die "ERROR:  ".$ans->faultstring if ($ans->fault);
@@ -464,14 +471,14 @@ sub result {
 	
 	my $searchTerm = "";
 	foreach my $queryID (@queryIDs) {
-		$searchTerm .= "<wsrp:ResourceProperty xmlns:wsrp=\"$WSRF::Constants::WSRP\">";
-		$searchTerm .= "result_".$queryID;
+		$searchTerm .= "<wsrp:ResourceProperty xmlns:wsrp='$WSRF::Constants::WSRP' xmlns:mobyws='$WSRF::Constants::MOBY'>";
+		$searchTerm .= "mobyws:result_".$queryID;
 		$searchTerm .= "</wsrp:ResourceProperty>"; 
 	}
 	
 	my $ans = WSRF::Lite
 		-> uri($WSRF::Constants::WSRP)
-		-> on_action( sub {sprintf '%s/%s', @_} )
+		-> on_action( sub {sprintf '%s/%s/%sRequest', $WSRF::Constants::WSRPW,$_[1],$_[1]} )
 		-> wsaddress($EPR)   
 		-> GetMultipleResourceProperties(SOAP::Data->value($searchTerm)->type('xml'));
 	die "ERROR:  ".$ans->faultstring if ($ans->fault);
@@ -499,7 +506,7 @@ sub destroy {
 	
 	my $ans = WSRF::Lite
 		-> uri($WSRF::Constants::WSRL)
-		-> on_action( sub {sprintf '%s/%s', @_} )
+		-> on_action( sub {sprintf '%s/ImmediateResourceTermination/%sRequest', $WSRF::Constants::WSRLW,$_[1]} )
 		-> wsaddress($EPR)
 		-> Destroy();
 	die "ERROR:  ".$ans->faultstring if ($ans->fault);

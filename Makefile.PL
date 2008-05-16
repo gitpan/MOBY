@@ -3,7 +3,7 @@
 
 	# Define metadata
 	name 'MOBY';
-	version '1.03';
+	version '1.04';
 	license 'perl';
 	abstract
 'This distribution is for communicating with or creating your own MOBY Central registry';
@@ -30,6 +30,7 @@
 	if ( not( $^O =~ /MSWin32|Windows_NT/i ) ) {
 
 		# non portable requires
+		requires 'Want'           => '0';
 		requires 'IO::Prompt'     => '0.99.2';
 		requires 'IPC::Shareable' => '0.6';
 
@@ -63,7 +64,7 @@ END_OF_TEXT
 		}
 
 		# MOBY::Async requires
-		requires 'WSRF::Lite'               => '0.8.2.2';
+		requires 'WSRF::Lite'               => '0.008.2.2';
 		requires 'XML::DOM'                 => '';
 		requires 'DateTime::Format::Epoch'  => '';
 		requires 'DateTime::Format::W3CDTF' => '';

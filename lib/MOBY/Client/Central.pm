@@ -1,4 +1,4 @@
-#$Id: Central.pm,v 1.3 2008/03/06 18:04:35 mwilkinson Exp $
+#$Id: Central.pm,v 1.5 2008/05/14 14:04:03 kawas Exp $
 package MOBY::Client::Central;
 use SOAP::Lite;
 
@@ -640,7 +640,7 @@ sub deregisterNamespace {
      authURI      => $authURI,      
      contactEmail => "your@mail.address",      
      description => $human_readable_description, 
-     category  =>  "moby" | "post" | "moby-async"
+     category  =>  "moby" | "cgi" | "moby-async"
      URL    =>  $URL_TO_SERVICE  (or URL to WSDL document for wsdl-type services)
 
     input:	listref; (articleName may be undef) 
@@ -738,13 +738,13 @@ sub registerService {
 
 #____________________________________________________________________________________________
 	return $self->errorRegXML(
-"Only 'moby', 'post', 'moby-async', 'doc-literal', 'doc-literal-async' Service Categories are currently allowed - you gave me $Category"
+"Only 'moby', 'cgi', 'moby-async', 'doc-literal', 'doc-literal-async' Service Categories are currently allowed - you gave me $Category"
 	  )
 	  unless ( ( $Category eq 'moby' )
 			  || ( $Category eq 'moby-async' )
 			  || ( $Category eq 'doc-literal' )
 			  || ( $Category eq 'doc-literal-async' )
-			  || ( $Category eq 'post' ));
+			  || ( $Category eq 'cgi' ));
 	return $self->errorRegXML(
 "All Fields Required:  serviceName, serviceType, authURI, contactEmail, URL, description, Category, input, output, secondary"
 	  )
@@ -971,7 +971,7 @@ sub deregisterService {
      serviceType  => $serviceType,  (optional)
      authURI      => $authURI,      (optional)
      authoritative => 1,    (optional)
-     category  =>  "moby" | "post" | "moby-async"  (optional)
+     category  =>  "moby" | "cgi" | "moby-async"  (optional)
      expandObjects => 1,    (optional)
      expandServices => 1,    (optional)
      URL    =>  $URL_TO_SERVICE    (optional)
@@ -1924,10 +1924,16 @@ sub DUMP {
 	#	return $self->SOAP_connection($reg)->call('DUMP')->paramsall;
 	my ($SQLs) = $self->_call( $reg, 'DUMP_MySQL', "" );
 	my (
-		$mobycentral,   $mobyobject, $mobyservice,
-		$mobynamespace, $mobyrelationship
-	  )
-	  = @{$SQLs};
+            $mobycentral,   $mobyobject, $mobyservice,
+            $mobynamespace, $mobyrelationship
+        ) = @{$SQLs} unless ref($SQLs) eq 'HASH';
+
+		# cases where soap message is serialized as a HASH
+        (
+            $mobycentral,   $mobyobject, $mobyservice,
+            $mobynamespace, $mobyrelationship
+        ) = @{$SQLs->{item}} if ref($SQLs) eq 'HASH';
+        
 	return (
 		$mobycentral,   $mobyobject, $mobyservice,
 		$mobynamespace, $mobyrelationship

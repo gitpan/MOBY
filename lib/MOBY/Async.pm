@@ -8,10 +8,18 @@ MOBY::Async - a set of tools for Asynchronous MOBY Services
 
 This is a set of tools for providing and invoking Asynchronous MOBY Services.
 
-=head1 AUTHORS
+=head1 FORMER AUTHORS
 
 Enrique de Andres Saiz (enrique.deandres@pcm.uam.es) -
 INB GNHC-1 (Madrid Science Park, Spain).
+
+=head1 MAINTAINERS
+
+Jose Manuel Rodriguez Carrasco (jmrodriguez@cnio.es) -
+INB GN-2 (Centro Nacional de Investigaciones Oncologicas, Spain).
+
+Jose Maria Fernandez Gonzalez (jmfernandez@cnio.es) -
+INB GN-2 (Centro Nacional de Investigaciones Oncologicas, Spain).
 
 =head1 DESCRIPTION
 
@@ -22,21 +30,21 @@ Services, both from client and server side. It consists of the following modules
 
 =item MOBY::Async::SimpleServer
 
-Provides a simple class that can be extended to build file based asynchronous
+It provides a simple class that can be extended to build file based asynchronous
 services.
 
 =item MOBY::Async::Service
 
-Provides a class to invoke asynchronous services.
+It provides a class to invoke asynchronous services.
 
 =item MOBY::Async::LSAE
 
-Provides functionalities to work with LSAE analysis event blocks.
+It provides functionalities to work with LSAE analysis event blocks.
 
 =item MOBY::Async::WSRF
 
-Extends WSRF::Lite perl module and provides everything required for
-MOBY::Async::SimpleServer class.
+It extends L<WSRF::Lite> perl module and provides everything required for
+L<MOBY::Async::SimpleServer> class.
 
 =back
 
@@ -47,7 +55,7 @@ of 60 seconds.
 
 From the server side, an asynchronous service is very similar to the traditional
 synchronous BioMOBY services. It is composed by a cgi (dispatcher.cgi) and a
-Perl module wich extends MOBY::Async::SimpleServer class (HelloWorld.pm).
+Perl module wich extends L<MOBY::Async::SimpleServer> class (HelloWorld.pm).
 
 B<dispatcher.cgi>
 
@@ -61,11 +69,13 @@ B<dispatcher.cgi>
   my $server = new SOAP::Transport::HTTP::CGI;
   $server->serializer(WSRF::Serializer->new);
   $server->deserializer(WSRF::Deserializer->new);
+  $server->on_action(sub{});
   $server->dispatch_with({
     $WSRF::Constants::MOBY.'#sayHello'        => 'HelloWorld',
     $WSRF::Constants::MOBY.'#sayHello_submit' => 'HelloWorld',
-    $WSRF::Constants::WSRL                    => 'HelloWorld',
-    $WSRF::Constants::WSRP                    => 'HelloWorld',
+    $WSRF::Constants::WSRPW.'/GetResourceProperty/GetResourcePropertyRequest' => 'HelloWorld',
+    $WSRF::Constants::WSRPW.'/GetMultipleResourceProperties/GetMultipleResourcePropertiesRequest' => 'HelloWorld',
+    $WSRF::Constants::WSRLW.'/ImmediateResourceTermination/DestroyRequest' => 'HelloWorld',
   });
   $server->handle();
 
@@ -75,14 +85,13 @@ B<HelloWorld.pm>
   use strict;
   use MOBY::CommonSubs qw(:all);
   use MOBY::Async::SimpleServer;
-  use vars qw(@ISA);
-  @ISA = qw(MOBY::Async::SimpleServer);
+  use base qw(MOBY::Async::SimpleServer);
 
-  # This environment variable is necessary - it is used internally
+  # This environment variable must be set - it is used internally
   # by MOBY::Async::SimpleServer class
   $ENV{AUTHURI} = 'your.auth.com';
 
-  # This variable is a subroutine which carry out the core of the service
+  # This variable is a subroutine which carries out the core of the service
   my $sayHello = sub {
     my ($caller, $data) = @_;
     my $response = '';
@@ -99,7 +108,7 @@ B<HelloWorld.pm>
     return SOAP::Data->value(responseHeader($ENV{AUTHURI}).$response.responseFooter())->type('string');
   };
 
-  # This is the method that answers to synchronous requests
+  # This is the method which answers to synchronous requests
   sub sayHello {
     my $self = shift @_;
     # Here you can choose between sync or error
@@ -107,7 +116,7 @@ B<HelloWorld.pm>
     #return $self->error(@_);
   }
 
-  # This is the method that answers to asynchronous requests
+  # This is the method which answers to asynchronous requests
   sub sayHello_submit {
     my $self = shift @_;
     return $self->async($sayHello, @_);
@@ -115,7 +124,7 @@ B<HelloWorld.pm>
 
   1;  
 
-A client that wishes to run an asynchronous service as HelloWorld must carry out
+A client which wishes to run an asynchronous service as HelloWorld must carry out
 the following steps:
 
 1. First we have a sayHello_submit (servicename_submit) invocation, which
@@ -127,7 +136,7 @@ say which batch-call).
 
 2. After this, a polling is done by invocating GetMultipleResourceProperties
 operation. GetMultipleResourceProperties retrieve the content of one or several
-properties. In this case, as we are trying to determine if a bach-call has
+properties. In this case, as we are trying to determine if a batch-call has
 finished, we ask all status properties (status_queryID). The status returned
 for each status property is in LSAE format. Unless all status properties
 represent that execution for its respective query identifier is finished, we
@@ -140,7 +149,7 @@ The content of the returned result properties are in BioMOBY format.
 4. The client also explicitly calls the WSRF Destroy operation to clean the
 results at the service side.
 
-To do this, a client relies on MOBY::Async::Service class, whoose use is very
+To do this, a client relies on MOBY::Async::Service class, whose use is very
 similar to MOBY::Client::Service class available for synchronous services:
 
   # By default, silent is true, then no messages about the progress are reported
@@ -153,7 +162,7 @@ similar to MOBY::Client::Service class available for synchronous services:
   print "$response\n";
 
 Additionally, MOBY::Async::Service class provides methods to carry out
-individually the steps described previously:
+individually the steps previously described:
 
   my $S = MOBY::Async::Service->new(service => $wsdl);
   my ($EPR, @queryIDs) = $S->submit(XMLinputlist => [
@@ -169,9 +178,13 @@ individually the steps described previously:
 
 =head1 FURTHER READING
 
-MOBY::Async::SimpleServer, MOBY::Async::Service, MOBY::Async::LSAE and
-MOBY::Async::WSRF Perl module documentation.
+L<MOBY::Async::SimpleServer>, L<MOBY::Async::Service>, L<MOBY::Async::LSAE> and
+L<MOBY::Async::WSRF> Perl modules documentation.
 
-Asynchronous BioMOBY Services Specification.
+Asynchronous BioMOBY Services Specification:
+L<http://biomoby.open-bio.org/CVS_CONTENT/moby-live/Docs/asyncDocs/BioMOBY%20Asynchronous%20Service%20Specification%20v2.4.2.pdf>
+
+WSRF Specifications:
+L<http://www.oasis-open.org/committees/tc_home.php?wg_abbrev=wsrf#technical>
 
 =cut

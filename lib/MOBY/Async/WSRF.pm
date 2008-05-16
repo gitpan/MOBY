@@ -11,17 +11,17 @@ Enrique de Andres Saiz (enrique.deandres@pcm.uam.es) -
 INB GNHC-1 (Madrid Science Park, Spain) (2006-2007).
 
 Maintainers
-Jose Maria Fernandez (jmfernandez@cnio.es),
-Jose Manuel Rodriguez (jmrodriguez@cnio.es) - 
+Jose Manuel Rodriguez (jmrodriguez@cnio.es),
+Jose Maria Fernandez (jmfernandez@cnio.es) -
 INB GN2 (CNIO, Spain).
 
 =head1 DESCRIPTION
 
-Extends WSRF::Lite perl module and provides everything required for
-MOBY::Async::SimpleServer class.
+It extends L<WSRF::Lite> Perl module and provides everything required for
+L<MOBY::Async::SimpleServer> class.
 
 It is not intendeed to be used directly unless you want to create a new class
-as WSRF::Async::SimpleServer
+as L<WSRF::Async::SimpleServer>.
 
 =cut
 
@@ -42,6 +42,8 @@ $WSRF::Constants::MOBY_MESSAGE_NS  = 'http://www.biomoby.org/moby';
 #$WSRF::Constants::WSSG  = 'http://docs.oasis-open.org/wsrf/sg-2';
 #$WSRF::Constants::WSBF  = 'http://docs.oasis-open.org/wsrf/bf-2';
 #$WSRF::Constants::WSA_ANON = 'http://www.w3.org/2005/08/addressing/anonymous';
+$WSRF::Constants::WSRPW  = 'http://docs.oasis-open.org/wsrf/rpw-2';
+$WSRF::Constants::WSRLW  = 'http://docs.oasis-open.org/wsrf/rlw-2';
 
 #===============================================================================
 # WSRF::Serializer
@@ -50,63 +52,63 @@ $WSRF::Constants::MOBY_MESSAGE_NS  = 'http://www.biomoby.org/moby';
 # CAN INSERT HEADERS WHEN A FAULT OCCURS
 #
 package WSRF::Serializer;
-use vars qw(@ISA);
-@ISA = qw(WSRF::WSRFSerializer);
+use base qw(WSRF::WSRFSerializer);
 
 my $WSRF_HEADER;
 
 sub std_envelope {
-  SOAP::Trace::trace('()');
-  my $self = shift->new;
-  my $type = shift;
+	SOAP::Trace::trace('()');
+	my $self = shift->new;
+	my $type = shift;
 
-  $self->autotype(0);
-  $self->attr ({'xmlns:wsa'  => $WSRF::Constants::WSA,
-		  'xmlns:wsrl' => $WSRF::Constants::WSRL,
-		  'xmlns:wsrp' => $WSRF::Constants::WSRP,
-		  'xmlns:wsu'  => $WSRF::Constants::WSU,
-		  'xmlns:wsse' => $WSRF::Constants::WSSE
-     	   } );
+	$self->autotype(0);
+	$self->attr ({'xmlns:wsa'  => $WSRF::Constants::WSA,
+		'xmlns:wsrl' => $WSRF::Constants::WSRL,
+		'xmlns:wsrp' => $WSRF::Constants::WSRP,
+		'xmlns:wsu'  => $WSRF::Constants::WSU,
+		'xmlns:wsse' => $WSRF::Constants::WSSE
+	} );
+	
+	
+	my(@parameters, @header);
+	for (@_) { 
+		# Find all the SOAP Headers
+		if (defined($_) && ref($_) && UNIVERSAL::isa($_ => 'SOAP::Header')) {
+			push(@header, $_); 
 
+		# Find all the SOAP Message Parts (attachments)
+		} elsif (defined($_) && ref($_) && 
+			$self->context && $self->context->packager->is_supported_part($_)
+		) {
+			$self->context->packager->push_part($_);
 
-  my(@parameters, @header);
-  for (@_) { 
-    # Find all the SOAP Headers
-    if (defined($_) && ref($_) && UNIVERSAL::isa($_ => 'SOAP::Header')) {
-      push(@header, $_); 
+		# Find all the SOAP Body elements
+		} else {
+			push(@parameters, $_);
+		}
+	}
+	my $header = @header ? SOAP::Data->set_value(@header) : undef;
+	$header = $WSRF_HEADER unless ($header); ########## THIS IS THE LINE I HAVE ADDED ##########
+	my($body,$parameters);
+	if ($type eq 'method' || $type eq 'response') {
+		SOAP::Trace::method(@parameters);
 
-    # Find all the SOAP Message Parts (attachments)
-    } elsif (defined($_) && ref($_) && 
-      $self->context && $self->context->packager->is_supported_part($_)) {
-      $self->context->packager->push_part($_);
+		my $method = shift(@parameters);
+		#	  or die "Unspecified method for SOAP call\n";
 
-    # Find all the SOAP Body elements
-    } else {
-      push(@parameters, $_);
-    }
-  }
-  my $header = @header ? SOAP::Data->set_value(@header) : undef;
-  $header = $WSRF_HEADER unless ($header); ########## THIS IS THE LINE I HAVE ADDED ##########
-  my($body,$parameters);
-  if ($type eq 'method' || $type eq 'response') {
-    SOAP::Trace::method(@parameters);
-
-    my $method = shift(@parameters);
-#	  or die "Unspecified method for SOAP call\n";
-
-    $parameters = @parameters ? SOAP::Data->set_value(@parameters) : undef;
-    if (!defined($method)) {
-    } elsif (UNIVERSAL::isa($method => 'SOAP::Data')) {
-      $body = $method;
-    } elsif ($self->use_default_ns) {
-      if ($self->{'_ns_uri'}) {
-        $body = SOAP::Data->name($method)->attr( { 
-	    'xmlns' => $self->{'_ns_uri'},
-	} ); 
-      } else {
-        $body = SOAP::Data->name($method); 
-      }
-    } else {
+		$parameters = @parameters ? SOAP::Data->set_value(@parameters) : undef;
+		if (!defined($method)) {
+		} elsif (UNIVERSAL::isa($method => 'SOAP::Data')) {
+			$body = $method;
+		} elsif ($self->use_default_ns) {
+			if ($self->{'_ns_uri'}) {
+				$body = SOAP::Data->name($method)->attr( { 
+					'xmlns' => $self->{'_ns_uri'},
+				} ); 
+			} else {
+				$body = SOAP::Data->name($method); 
+			}
+		} else {
 # Commented out by Byrne on 1/4/2006 - to address default namespace problems
 #      $body = SOAP::Data->name($method)->uri($self->{'_ns_uri'});
 #      $body = $body->prefix($self->{'_ns_prefix'}) if ($self->{'_ns_prefix'});
@@ -114,75 +116,80 @@ sub std_envelope {
 # Added by Byrne on 1/4/2006 - to avoid the unnecessary creation of a new
 # namespace
 # Begin New Code (replaces code commented out above)
-      $body = SOAP::Data->name($method);
-      my $pre = $self->find_prefix($self->{'_ns_uri'});
-      $body = $body->prefix($pre) if ($self->{'_ns_prefix'});
+			$body = SOAP::Data->name($method);
+			my $pre = $self->find_prefix($self->{'_ns_uri'});
+			$body = $body->prefix($pre) if ($self->{'_ns_prefix'});
 # End new code
 
-    }
-    # This is breaking a unit test right now...
-    $body->set_value(SOAP::Utils::encode_data($parameters ? \$parameters : ()))
-      if $body;
-  } elsif ($type eq 'fault') {
-    SOAP::Trace::fault(@parameters);
-    $body = SOAP::Data
-      -> name(SOAP::Utils::qualify($self->envprefix => 'Fault'))
-    # parameters[1] needs to be escaped - thanks to aka_hct at gmx dot de
-    # commented on 2001/03/28 because of failing in ApacheSOAP
-    # need to find out more about it
-    # -> attr({'xmlns' => ''})
-      -> value(\SOAP::Data->set_value(
-        SOAP::Data->name(faultcode => SOAP::Utils::qualify($self->envprefix => $parameters[0]))->type(""),
-        SOAP::Data->name(faultstring => SOAP::Utils::encode_data($parameters[1]))->type(""),
-        defined($parameters[2]) ? SOAP::Data->name(detail => do{my $detail = $parameters[2]; ref $detail ? \$detail : $detail}) : (),
-        defined($parameters[3]) ? SOAP::Data->name(faultactor => $parameters[3])->type("") : (),
-      ));
-  } elsif ($type eq 'freeform') {
-    SOAP::Trace::freeform(@parameters);
-    $body = SOAP::Data->set_value(@parameters);
-  } elsif (!defined($type)) {
-    # This occurs when the Body is intended to be null. When no method has been
-    # passed in of any kind.
-  } else {
-    die "Wrong type of envelope ($type) for SOAP call\n";
-  }
-
-  $self->seen({}); # reinitialize multiref table
-  # Build the envelope
-  # Right now it is possible for $body to be a SOAP::Data element that has not
-  # XML escaped any values. How do you remedy this?
-  my($encoded) = $self->encode_object(
-        SOAP::Data->name(SOAP::Utils::qualify($self->envprefix => 'Envelope') => \SOAP::Data->value(
-	            ($header ? SOAP::Data->name(SOAP::Utils::qualify($self->envprefix => 'Header') => \$header) : ()),
-          ($body ? SOAP::Data->name(SOAP::Utils::qualify($self->envprefix => 'Body') => \$body)
-		 ->attr( { 
-				   'wsu:Id'     => 'myBody'		 
-			 } ) :
-             SOAP::Data->name(SOAP::Utils::qualify($self->envprefix => 'Body')) 
-                        ->attr( { 
-				   'wsu:Id'     => 'myBody'
-				} ) 
-	),
-    ))->attr($self->attr)
-  );
-  $self->signature($parameters->signature) if ref $parameters;
-
-  # IMHO multirefs should be encoded after Body, but only some
-  # toolkits understand this encoding, so we'll keep them for now (04/15/2001)
-  # as the last element inside the Body 
-  #                 v -------------- subelements of Envelope
-  #                      vv -------- last of them (Body)
-  #                            v --- subelements
-  push(@{$encoded->[2]->[-1]->[2]}, $self->encode_multirefs) if ref $encoded->[2]->[-1]->[2];
-
-  # Sometimes SOAP::Serializer is invoked statically when there is no context.
-  # So first check to see if a context exists.
-  # TODO - a context needs to be initialized by a constructor?
-  if ($self->context && $self->context->packager->parts) {
-  # TODO - this needs to be called! Calling it though wraps the payload twice!
-  #  return $self->context->packager->package($self->xmlize($encoded));
-  }
-  return $self->xmlize($encoded);
+		}
+		# This is breaking a unit test right now...
+		$body->set_value(SOAP::Utils::encode_data($parameters ? \$parameters : ()))
+			if $body;
+	} elsif ($type eq 'fault') {
+		SOAP::Trace::fault(@parameters);
+		$body = SOAP::Data
+			->name(SOAP::Utils::qualify($self->envprefix => 'Fault'))
+		# parameters[1] needs to be escaped - thanks to aka_hct at gmx dot de
+		# commented on 2001/03/28 because of failing in ApacheSOAP
+		# need to find out more about it
+		# -> attr({'xmlns' => ''})
+			->value(\SOAP::Data->set_value(
+				SOAP::Data->name(faultcode => SOAP::Utils::qualify($self->envprefix => $parameters[0]))->type(""),
+				SOAP::Data->name(faultstring => SOAP::Utils::encode_data($parameters[1]))->type(""),
+				defined($parameters[2]) ? SOAP::Data->name(detail => do{my $detail = $parameters[2]; ref $detail ? \$detail : $detail}) : (),
+				defined($parameters[3]) ? SOAP::Data->name(faultactor => $parameters[3])->type("") : (),
+      			));
+	} elsif ($type eq 'freeform') {
+		SOAP::Trace::freeform(@parameters);
+		$body = SOAP::Data->set_value(@parameters);
+	} elsif (!defined($type)) {
+		# This occurs when the Body is intended to be null. When no method has been
+		# passed in of any kind.
+	} else {
+		die "Wrong type of envelope ($type) for SOAP call\n";
+	}
+	
+	$self->seen({}); # reinitialize multiref table
+	# Build the envelope
+	# Right now it is possible for $body to be a SOAP::Data element that has not
+	# XML escaped any values. How do you remedy this?
+	my($encoded) = $self->encode_object(
+		SOAP::Data->name(
+			SOAP::Utils::qualify($self->envprefix => 'Envelope') => \SOAP::Data->value(
+				($header ? SOAP::Data->name(SOAP::Utils::qualify($self->envprefix => 'Header') => \$header) : ()),
+				($body ? SOAP::Data
+						->name(SOAP::Utils::qualify($self->envprefix => 'Body') => \$body)
+						->attr( { 
+							'wsu:Id'     => 'myBody'		 
+						} )
+					:
+					SOAP::Data
+						->name(SOAP::Utils::qualify($self->envprefix => 'Body')) 
+						->attr( { 
+							'wsu:Id'     => 'myBody'
+					} ) 
+				),
+    			)
+		)->attr($self->attr)
+	);
+	$self->signature($parameters->signature) if ref $parameters;
+	
+	# IMHO multirefs should be encoded after Body, but only some
+	# toolkits understand this encoding, so we'll keep them for now (04/15/2001)
+	# as the last element inside the Body 
+	#                 v -------------- subelements of Envelope
+	#                      vv -------- last of them (Body)
+	#                            v --- subelements
+	push(@{$encoded->[2]->[-1]->[2]}, $self->encode_multirefs) if ref $encoded->[2]->[-1]->[2];
+	
+	# Sometimes SOAP::Serializer is invoked statically when there is no context.
+	# So first check to see if a context exists.
+	# TODO - a context needs to be initialized by a constructor?
+	if ($self->context && $self->context->packager->parts) {
+		# TODO - this needs to be called! Calling it though wraps the payload twice!
+		#  return $self->context->packager->package($self->xmlize($encoded));
+	}
+	return $self->xmlize($encoded);
 }
 
 
@@ -198,8 +205,8 @@ sub std_envelope {
 #
 package WSRF::FileBasedMobyResourceProperties;
 use strict;
-use vars qw(@ISA);
-@ISA = qw(WSRF::WSRP);
+use XML::LibXML;
+use base qw(WSRF::WSRP);
 
 # Load the ResourceProperties from the file into the ResourceProperties hash
 # then call the super operation.
@@ -207,15 +214,51 @@ sub GetResourceProperty {
 	my $self = shift @_;
 	my $envelope = pop @_;
 	
-	$ENV{ID} = $envelope->valueof("/{$SOAP::Constants::NS_ENV}Envelope/{$SOAP::Constants::NS_ENV}Header/{$WSRF::Constants::MOBY}ServiceInvocationId");
 	my $lock = WSRF::MobyFile->new($envelope);
 	$lock->toFile();
+
+	my($isValidQName)=1;
+	my($search)=undef;
+	my($localsearch)=undef;
+	eval {
+		my($parser)=XML::LibXML->new();
+		my($context)=XML::LibXML::XPathContext->new();
+		$context->registerNs('wsrf-rp',$WSRF::Constants::WSRP);
+		my($envxml)=$parser->parse_string($envelope->raw_xml());
+		foreach my $searchnode ($context->findnodes('//wsrf-rp:GetResourceProperty',$envxml)) {
+			$search=$searchnode->textContent();
+			
+			$localsearch=$search;
+			my($prefix)='';
+			my($icolon)=index($search,':');
+			if($icolon!=-1) {
+				$prefix=substr($search,0,$icolon);
+				$localsearch=substr($search,$icolon+1);
+			}
+			my($nsnode)=$searchnode->lookupNamespaceURI($prefix);
+			unless(defined($nsnode) && $nsnode eq $WSRF::Constants::MOBY) {
+				$isValidQName=undef;
+			}
+			
+			last;
+		}
+	};
+
+	if($@) {
+		$search = $envelope->valueof("//{$WSRF::Constants::WSRP}GetResourceProperty/");
+		$localsearch=$search;
+		my($prefix)='';
+		my($icolon)=index($search,':');
+		if($icolon!=-1) {
+			$prefix=substr($search,0,$icolon);
+			$localsearch=substr($search,$icolon+1);
+		}
+	}
 	
-	my $search = $envelope->valueof("//{$WSRF::Constants::WSRP}GetResourceProperty/");
 	WSRF::BaseFaults::die_with_fault( $envelope, (
 		BaseFault   => "InvalidResourcePropertyQNameFault",
 		Description => "Property $search does not exist"
-	) ) unless (defined($WSRF::WSRP::ResourceProperties{$search}));
+	) )  unless(defined($isValidQName) && exists($WSRF::WSRP::ResourceProperties{$localsearch}) && defined($WSRF::WSRP::ResourceProperties{$localsearch}));
 	
 	my @resp = $self->SUPER::GetResourceProperty($envelope);
 	return @resp;
@@ -226,14 +269,49 @@ sub GetResourceProperty {
 sub GetMultipleResourceProperties {
 	my $self = shift @_;
 	my $envelope = pop @_;
-	
-	$ENV{ID} = $envelope->valueof("/{$SOAP::Constants::NS_ENV}Envelope/{$SOAP::Constants::NS_ENV}Header/{$WSRF::Constants::MOBY}ServiceInvocationId");
+
 	my $lock = WSRF::MobyFile->new($envelope); 
 	$lock->toFile();
 	
 	my @notfound;
-	foreach my $search ($envelope->valueof("//{$WSRF::Constants::WSRP}ResourceProperty/")) {
-		push(@notfound, $search) unless (defined($WSRF::WSRP::ResourceProperties{$search}));
+	eval {
+		my($parser)=XML::LibXML->new();
+		my($context)=XML::LibXML::XPathContext->new();
+		$context->registerNs('wsrf-rp',$WSRF::Constants::WSRP);
+		my($envxml)=$parser->parse_string($envelope->raw_xml());
+		foreach my $searchnode ($context->findnodes('//wsrf-rp:ResourceProperty',$envxml)) {
+			my($search)=$searchnode->textContent();
+			
+			my($localsearch)=$search;
+			my($prefix)='';
+			my($icolon)=index($search,':');
+			if($icolon!=-1) {
+				$prefix=substr($search,0,$icolon);
+				$localsearch=substr($search,$icolon+1);
+			}
+			my($isValidQName)=undef;
+			my($nsnode)=$searchnode->lookupNamespaceURI($prefix);
+			if(defined($nsnode) && $nsnode eq $WSRF::Constants::MOBY) {
+				$isValidQName=1;
+			}
+			
+			push(@notfound, $search)  unless(defined($isValidQName) && exists($WSRF::WSRP::ResourceProperties{$localsearch}) && defined($WSRF::WSRP::ResourceProperties{$localsearch}));
+			
+		}
+	};
+
+	if($@) {
+		foreach my $search ($envelope->valueof("//{$WSRF::Constants::WSRP}ResourceProperty/")) {
+			my($localsearch)=$search;
+			my($prefix)='';
+			my($icolon)=index($search,':');
+			if($icolon!=-1) {
+				$prefix=substr($search,0,$icolon);
+				$localsearch=substr($search,$icolon+1);
+			}
+			
+			push(@notfound, $search)  unless(exists($WSRF::WSRP::ResourceProperties{$localsearch}) && defined($WSRF::WSRP::ResourceProperties{$localsearch}));
+		}
 	}
 	WSRF::BaseFaults::die_with_fault( $envelope, (
 		BaseFault   => "InvalidResourcePropertyQNameFault",
@@ -244,6 +322,57 @@ sub GetMultipleResourceProperties {
 	return @resp;   
 }
 
+#sub GetMultipleResourcePropertiesRequest {
+#	my $self = shift @_;
+#	my $envelope = pop @_;
+#	my $methodname = (caller(0))[3];
+#	$methodname = substr($methodname,rindex($methodname,':')+1);
+#	eval {
+#		my $parser=XML::LibXML->new();
+#		my $envxml = $parser->parse_string($envelope->raw_xml);
+#		my $context=XML::LibXML::XPathContext->new();
+#		$context->registerNs('s11',$SOAP::Constants::NS_ENV);
+#		$context->registerNs('wsa',$WSRF::Constants::WSA);
+#		my(@actions)=$context->findnodes('/s11:Envelope/s11:Header/wsa:Action[1]',$envxml);
+#		if(scalar(@actions)>0) {
+#			my($action)=$actions[0];
+#			my $acturi = $action->textContent();
+#			my $newacturi= $acturi;
+#			$newacturi =~ s/Request$//;
+#			if( $acturi ne $newacturi) {
+#				foreach my $child ($action->childNodes) {
+#					$action->removeChild($child);
+#				}
+#				$action->appendChild($envxml->createTextNode($newacturi));
+#				
+#				
+#				my(@query)=$context->findnodes("/s11:Envelope/s11:Body/wsa:$methodname".'[1]',$envxml);
+#				if(scalar(@query)>0) {
+#					my($prefix)=$query[0]->prefix();
+#					if(defined($prefix) && $prefix ne '') {
+#						$prefix.=':';
+#					} else {
+#						$prefix='';
+#					}
+#					$methodname =~ s/Request$//;
+#					$query[0]->setNodeName($prefix.$methodname);
+#				}
+#				
+#				# Last, craete new SOM object
+#				my $sparser = WSRF::Deserializer->new();
+#				my($manistring)=$envxml->toString();
+#				$manistring =~ s/[\r\n]+//g;
+#				print STDERR "ENVELOPE ",$manistring,"\n";
+#				$envelope = $sparser->deserialize($manistring);
+#			}
+#		}
+#	};
+#
+#	if($@) {
+#		print STDERR "FALLACANALLA $@\n";
+#	}
+#	return $self->GetMultipleResourceProperties(@_,$envelope);
+#}
 
 #===============================================================================
 # WSRF::FileBasedMobyResourceLifetimes
@@ -257,8 +386,7 @@ sub GetMultipleResourceProperties {
 #
 package WSRF::FileBasedMobyResourceLifetimes;
 use strict;
-use vars qw(@ISA);
-@ISA = qw(WSRF::FileBasedMobyResourceProperties);
+use base qw(WSRF::FileBasedMobyResourceProperties);
 
 # Add resource property TerminationTime - initalise to nothing (infinity).
 $WSRF::WSRP::ResourceProperties{'TerminationTime'} = '';
@@ -280,7 +408,6 @@ $WSRF::WSRP::NotModifiable{CurrentTime} = 1;
 sub Destroy {
 	my $self = shift @_;
 	my $envelope = pop @_;
-	$ENV{ID} = $envelope->valueof("/{$SOAP::Constants::NS_ENV}Envelope/{$SOAP::Constants::NS_ENV}Header/{$WSRF::Constants::MOBY}ServiceInvocationId");
 	my $lock = WSRF::MobyFile->new($envelope);
 	my $file = $WSRF::Constants::Data.$lock->ID();
 	unlink $file or WSRF::BaseFaults::die_with_fault( $envelope, (
@@ -382,6 +509,11 @@ sub die_with_fault {
 package WSRF::Header;
 use strict;
 
+my(%URI2ACTION)=(
+	$WSRF::Constants::WSRP => [$WSRF::Constants::WSRPW,undef],
+	$WSRF::Constants::WSRL => [$WSRF::Constants::WSRLW,'ImmediateResourceTermination']
+);
+
 sub header {
 	my ($envelope, %args) = @_;
 	my $myHeader;
@@ -417,6 +549,10 @@ sub header {
 		my $data = $envelope->match("/{$SOAP::Constants::NS_ENV}Envelope/{$SOAP::Constants::NS_ENV}Body/[1]")->dataof;
 		my $method = $data->name;
 		my $uri = $data->uri;
+		if(exists($URI2ACTION{$uri})) {
+			$uri = $URI2ACTION{$uri}[0].'/'.(defined($URI2ACTION{$uri}[1])?$URI2ACTION{$uri}[1]:$method);
+		}
+		print STDERR "GURI $uri\n";
 		$myHeader .= "<wsa:Action wsu:Id=\"Action\">".$uri."/".$method."Response</wsa:Action>";
 	}
 	
@@ -449,16 +585,21 @@ sub header {
 #
 package WSRF::MobyFile;
 use strict;
-use vars qw(@ISA);
-@ISA = qw(WSRF::File);
+
+use base qw(WSRF::File);
 
 sub new {
-	my( $class, $envelope) = @_;
+	my( $class, $envelope, $ID) = @_;
+
+	unless(defined($ID)) {
+		$ID = $envelope->valueof("/{$SOAP::Constants::NS_ENV}Envelope/{$SOAP::Constants::NS_ENV}Header/{$WSRF::Constants::MOBY}ServiceInvocationId");
+		$ENV{ID} = $ID;
+	}
+	
 	
 	# Check the ID is safe - we do not accept dots,
 	# All paths will be relative to $ENV{WRF_MODULES}
 	# Only allow alphanumeric, underscore and hyphen
-	my $ID = $ENV{ID};
 	if( $ID =~ /^([-\w]+)$/ ) {
 		$ID = $1;
 	} else {
@@ -509,7 +650,6 @@ sub new {
 	     ($WSRF::WSRP::ResourceProperties{'TerminationTime'} ne "") ) {
 		if ( WSRF::Time::ConvertStringToEpochTime($WSRF::WSRP::ResourceProperties{'TerminationTime'}) < time ) {
         		
-			print STDERR "$$ Resource $ID expired\n";
 			unlink $path or die SOAP::Fault->faultcode("Container Failure")
 		                                       ->faultstring("Container Failure: Could not remove file");
 			rmdir $lock or die SOAP::Fault->faultcode("Container Failure")

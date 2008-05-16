@@ -2,7 +2,7 @@
 #
 # Prepare the stage...
 #
-# $Id: moby-s-install.pl,v 1.3 2008/03/19 16:55:35 kawas Exp $
+# $Id: moby-s-install.pl,v 1.4 2008/04/30 17:08:30 kawas Exp $
 # Contact: Edward Kawas <edward.kawas@gmail.com>
 # -----------------------------------------------------------
 
@@ -57,14 +57,6 @@ END_OF_USAGE
 		File::HomeDir
 		File::ShareDir
 		Class::Inspector
-		XML::DOM
-		DateTime::Format::Epoch
-		DateTime::Format::W3CDTF
-		HTTP::Daemon
-		MIME::Base64
-		Digest::SHA1
-		Crypt::OpenSSL::RSA
-		Sys::Hostname::Long
 		RDF::Core
 		XML::XPath
 		Text::Shellwords
@@ -87,9 +79,28 @@ END_OF_USAGE
 		check_module('IO::Prompt');
 		require IO::Prompt;
 		import IO::Prompt;
-		check_module('WSRF::Lite');
-		check_module('Crypt::OpenSSL::X509');
+		# module required for service_tester.pl
 		check_module('IPC::Shareable');
+		# check for async libraries if user wants to ....
+		do {
+			foreach $module (
+			qw / WSRF::Lite
+				 XML::DOM
+				 DateTime::Format::Epoch
+				 DateTime::Format::W3CDTF
+				 HTTP::Daemon
+				 Crypt::OpenSSL::X509
+				 MIME::Base64
+		         Digest::SHA1
+		         Crypt::OpenSSL::RSA
+				 Sys::Hostname::Long
+				 HTTP::Daemon::SSL
+				 XML::CanonicalizeXML
+			   / ) {
+				check_module($module);
+				
+			}
+		} if prompt( "Shall we check for the moby-async libraries\n\t(do this only if you plan on creating async moby services)? ", -yn );
 	}
 
 	if ($errors_found) {

@@ -3,7 +3,7 @@
 # Author: Edward Kawas <edward.kawas@gmail.com>,
 # For copyright and disclaimer see below.
 #
-# $Id: ServiceCache.pm,v 1.2 2008/02/21 17:15:40 kawas Exp $
+# $Id: ServiceCache.pm,v 1.3 2008/04/30 16:53:36 kawas Exp $
 #-----------------------------------------------------------------
 
 package MOBY::RDF::Ontologies::Cache::ServiceCache;
@@ -20,6 +20,7 @@ use RDF::Core::Model::Serializer;
 
 use Fcntl ':flock';
 
+use MOBY::RDF::Utils;
 use MOBY::RDF::Ontologies::Services;
 use MOBY::RDF::Ontologies::Cache::CacheUtils;
 use MOBY::Client::Central;
@@ -430,6 +431,8 @@ sub get_rdf {
 											File::Spec->catfile( $dir, $RDF ) );
 					};
 					warn $@ if $@;
+					# if it didnt parse correctly, reset to null
+					$doc = undef if $@;
 					next;
 				} unless $doc;
 				my $temp_doc = eval {
@@ -447,7 +450,8 @@ sub get_rdf {
 				}
 
 			}
-			$xml = $doc->toString();
+			$xml = $doc->toString() if $doc;
+			$xml = new MOBY::RDF::Utils->empty_rdf unless $doc;
 
 			# save new RDF file
 			open( FILE, ">$file" )

@@ -39,6 +39,7 @@ you should install the missing modules, and re-run the tests.
 
 CLIENT_ONLY
 
+  $ENV{MOBY_CENTRAL_CONFIG} = "./t/mobycentral.config";
 # Test that modules required ONLY for local MOBY Central are installed.
   require_ok( "DBI" ) or diag($missing_modules);
   require_ok( "DBD::mysql" ) or diag($missing_modules);

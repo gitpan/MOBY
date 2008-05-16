@@ -3,7 +3,7 @@
 # Author: Edward Kawas <edward.kawas@gmail.com>,
 # For copyright and disclaimer see below.
 #
-# $Id: Services.pm,v 1.2 2008/02/21 17:15:41 kawas Exp $
+# $Id: Services.pm,v 1.3 2008/04/01 18:26:19 kawas Exp $
 #-----------------------------------------------------------------
 
 package MOBY::RDF::Ontologies::Services;
@@ -315,42 +315,42 @@ sub _createRDFModel {
 							 new RDF::Core::Literal( $SI->name )
 						 )
 		);
+		eval{
+			do {
+				# add is alive information if necessary
+				if ( $self->{is_alive_path} and -e $self->{is_alive_path} and -r $self->{is_alive_path} ."/isAliveStats.xml") {
+					my $parser = XML::LibXML->new();
+					my $doc    =
+					  $parser->parse_file(
+										 $self->{is_alive_path} . '/isAliveStats.xml' );
+					my $value    = "true";
+					my $id       = $SI->authority . "," . $SI->name;
+					my @nodelist = $doc->getElementsByTagName("service");
+					for my $node (@nodelist) {
+						next unless ( $node->getAttribute('id') eq $id );
+						$value = $node->textContent;
+						last;
+					}
+					$model->addStmt(
+							 new RDF::Core::Statement(
+								 $resource,
+								 $resource->new( MOBY::RDF::Predicates::FETA->isAlive ),
+								 new RDF::Core::Literal($value)
+							 )
+					);
+				} else {
 		
-		do {
-			# add is alive information if necessary
-			if ( $self->{is_alive_path} and -e $self->{is_alive_path} ) {
-				my $parser = XML::LibXML->new();
-				my $doc    =
-				  $parser->parse_file(
-									 $self->{is_alive_path} . '/isAliveStats.xml' );
-				my $value    = "true";
-				my $id       = $SI->authority . "," . $SI->name;
-				my @nodelist = $doc->getElementsByTagName("service");
-				for my $node (@nodelist) {
-					next unless ( $node->getAttribute('id') eq $id );
-					$value = $node->textContent;
-					last;
+					# by default, state the service is alive ...
+					$model->addStmt(
+							 new RDF::Core::Statement(
+								 $resource,
+								 $resource->new( MOBY::RDF::Predicates::FETA->isAlive ),
+								 new RDF::Core::Literal('true')
+							 )
+					);
 				}
-				$model->addStmt(
-						 new RDF::Core::Statement(
-							 $resource,
-							 $resource->new( MOBY::RDF::Predicates::FETA->isAlive ),
-							 new RDF::Core::Literal($value)
-						 )
-				);
-			} else {
-	
-				# by default, state the service is alive ...
-				$model->addStmt(
-						 new RDF::Core::Statement(
-							 $resource,
-							 $resource->new( MOBY::RDF::Predicates::FETA->isAlive ),
-							 new RDF::Core::Literal('true')
-						 )
-				);
-			}
-		} unless $addIsAlive  =~ /no/i;
-		
+			} unless $addIsAlive  =~ /no/i;
+		};
 		# add the authoring statements
 		my $bnode = $node_factory->newResource;
 		$model->addStmt(

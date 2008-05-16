@@ -71,6 +71,7 @@ END {
   $r = $C->deregisterObjectClass( objectType => "Rubbish" );
   $r = $C->deregisterNamespace( namespaceType => 'RubbishNamespace' );
   $r = $C->deregisterServiceType( serviceType => 'RubbishyService' );
+  $r = $C->deregisterServiceType( serviceType => 'RubbishyServiceNoParent' );
 };
 
 # Can we connect to the registry?
@@ -179,7 +180,18 @@ ok($r->success, "Name space registration successful")
   or diag("Name space registration failure: " . $r->message) ;
 
 ############     SERVICE-TYPE REGISTRATION        #############
-my %ServiceType = ( serviceType   => "RubbishyService",
+#this registration should fail => empty relationship type
+my %ServiceType = ( serviceType   => "RubbishyServiceNoParent",
+		    description   => "a human-readable description of the service",
+		    contactEmail  => 'your@email.address',
+		    authURI       => "test.suite.com",
+		    Relationships => { ISA => [''] }
+		  );
+$r = $C->registerServiceType( %ServiceType );
+ok($r->success == 0, "\nService Type registration unsuccessful when no parent specified!")
+  or diag("\nService Type registration was successful when no parent type was specified:\n" . $r->message) ;
+
+%ServiceType = ( serviceType   => "RubbishyService",
 		    description   => "a human-readable description of the service",
 		    contactEmail  => 'your@email.address',
 		    authURI       => "test.suite.com",
@@ -188,7 +200,6 @@ my %ServiceType = ( serviceType   => "RubbishyService",
 $r = $C->registerServiceType( %ServiceType );
 ok($r->success, "Service Type registration successful")
   or diag("Service Type registration failure: " . $r->message) ;
-
 
 $r = $C->Relationships(objectType => $Obj{objectType});
 isa_ok($r, "HASH", "Relationship types hash") 

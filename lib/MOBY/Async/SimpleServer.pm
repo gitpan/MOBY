@@ -90,13 +90,14 @@ synchronous or asynchronous request of the service.
 
 package MOBY::Async::SimpleServer;
 use strict;
+use CGI;
 use XML::LibXML;
 use POSIX qw(setsid);
 use MOBY::CommonSubs qw(:all);
 use MOBY::Async::LSAE;
 use MOBY::Async::WSRF;
-use vars qw(@ISA);
-@ISA = qw(WSRF::FileBasedMobyResourceLifetimes);
+
+use base qw(WSRF::FileBasedMobyResourceLifetimes);
 
 #===============================================================================
 # async_create
@@ -114,7 +115,24 @@ my $async_create = sub {
 	
 	# Create an EndpointReference for the resource
 	my $EPR = WSRF::WS_Address->new();
-	$EPR->Address("http://".$ENV{SERVER_NAME}.$ENV{SCRIPT_NAME});
+
+        my($query)=CGI->new();
+        my($proto)=($query->https())?'https':'http';
+        my($host)=$query->virtual_host();
+        my($port)=$query->virtual_port();
+	if(($proto eq 'http' && $port eq '80') || ($proto eq 'https' && $port eq '443')) {
+		$port='';
+	} else {
+		$port = ':'.$port;
+	}
+        my($relpath)=$query->script_name();
+        my($virtualrel)=$ENV{'HTTP_VIA'} || $ENV{'HTTP_FORWARDED'} || $ENV{'HTTP_X_FORWARDED_FOR'};
+        if(defined($virtualrel) && $virtualrel =~ /^(?:https?:\/\/[^:\/]+)?(?::[0-9]+)?(\/.*)/) {
+                $relpath=$1;
+        }
+
+	$EPR->Address("$proto://$host$port$relpath?asyncId=$ID");
+	#$EPR->Address("http://".$ENV{SERVER_NAME}.$ENV{SCRIPT_NAME});
 	$EPR->ReferenceParameters('<wsa:ReferenceParameters><mobyws:ServiceInvocationId xmlns:mobyws="'.$WSRF::Constants::MOBY.'">'.$ENV{ID}.'</mobyws:ServiceInvocationId></wsa:ReferenceParameters>');
 	$EPR = XML::LibXML->new->parse_string($EPR->XML)->getDocumentElement->toString;
 	
@@ -141,7 +159,8 @@ my $async_submit = sub {
 	my ($func, $data) = @_;
 	
 	# Get input queryIDs and store them
-	my $lock = WSRF::MobyFile->new($envelope);
+	my $ID=$ENV{ID};
+	my $lock = WSRF::MobyFile->new($envelope,$ID);
 	my $inputs = serviceInputParser($data);
 	my @queryIDs = keys %$inputs;
 	$WSRF::WSRP::Private{queryIDs} = \@queryIDs;
@@ -167,7 +186,7 @@ my $async_submit = sub {
 		my $property_result = "result_$queryID";
 		
 		# Check if service is running or not
-		my $lock = WSRF::MobyFile->new($envelope);
+		my $lock = WSRF::MobyFile->new($envelope,$ID);
 		if ($WSRF::WSRP::Private{$property_pid}) {
 			$lock->toFile();
 		} else {
@@ -265,7 +284,7 @@ my $async_submit = sub {
 				$status->id($queryID);
 				
 				# New properties values
-				my $lock = WSRF::MobyFile->new($envelope);
+				$lock = WSRF::MobyFile->new($envelope,$ID);
 				$WSRF::WSRP::Private{$property_pid} = $$;
 				$WSRF::WSRP::ResourceProperties{$property_status} = $status->XML();
 				$WSRF::WSRP::ResourceProperties{$property_result} = '';
@@ -275,12 +294,10 @@ my $async_submit = sub {
 				my $result;
 				eval {
 					my $xml = $func->($class, $input);
-					if(UNIVERSAL::isa($xml,'XML::LibXML::Node')) {
-						if(UNIVERSAL::isa($xml,'XML::LibXML::Document')) {
-							$result=$xml->getDocumentElement()->toString();
-						} else {
-							$result=$xml->toString();
-						}
+					if(UNIVERSAL::isa($xml,'XML::LibXML::Document')) {
+						$result=$xml->getDocumentElement()->toString();
+					} elsif(UNIVERSAL::isa($xml,'XML::LibXML::Node')) {
+						$result=$xml->toString();
 					} else {
 						my $parser = XML::LibXML->new();
 						my $toparse;
@@ -331,7 +348,7 @@ my $async_submit = sub {
 				}
 				
 				# New properties values
-				$lock = WSRF::MobyFile->new($envelope);
+				$lock = WSRF::MobyFile->new($envelope,$ID);
 				$WSRF::WSRP::Private{$property_pid} = '';
 				$WSRF::WSRP::ResourceProperties{$property_status} = $status->XML();
 				$WSRF::WSRP::ResourceProperties{$property_result} = $result;
@@ -344,7 +361,7 @@ my $async_submit = sub {
 	}
 	
 	# Compose response using the status properties
-	$lock = WSRF::MobyFile->new($envelope);
+	$lock = WSRF::MobyFile->new($envelope,$ID);
 	my $ans = '';
 	foreach my $queryID (@queryIDs) {
 		my $property_status = "status_$queryID";
@@ -469,7 +486,6 @@ sub async {
 sub Destroy {
 	my ($class, $envelope) = ($_[0], $_[$#_]);
 	
-	$ENV{ID} = $envelope->valueof("/{$SOAP::Constants::NS_ENV}Envelope/{$SOAP::Constants::NS_ENV}Header/{$WSRF::Constants::MOBY}ServiceInvocationId");
 	my $lock = WSRF::MobyFile->new($envelope);
 	$lock->toFile();
 	

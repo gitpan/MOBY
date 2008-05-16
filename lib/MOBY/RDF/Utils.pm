@@ -3,7 +3,7 @@
 # Author: Edward Kawas <edward.kawas@gmail.com>,
 # For copyright and disclaimer see below.
 #
-# $Id: Utils.pm,v 1.4 2008/03/05 17:39:43 kawas Exp $
+# $Id: Utils.pm,v 1.5 2008/04/30 16:52:25 kawas Exp $
 #-----------------------------------------------------------------
 
 package MOBY::RDF::Utils;
@@ -149,6 +149,23 @@ sub getHttpRequestByURL {
 	} else {
 		die "Error getting data from URL:\n\t" . $res->status_line;
 	}    
+}
+
+=head2 empty_rdf
+
+returns a string of RDF that represents a syntactically correct RDF file
+
+=cut
+
+sub empty_rdf {
+	return <<'END_OF_RDF';
+<?xml version="1.0"?>
+<rdf:RDF 
+  xmlns:b="http://www.w3.org/2000/01/rdf-schema#"
+  xmlns:a="http://protege.stanford.edu/plugins/owl/dc/protege-dc.owl#"
+  xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+</rdf:RDF>
+END_OF_RDF
 }
 
 1;

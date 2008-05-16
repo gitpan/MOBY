@@ -3,7 +3,7 @@
 # Author: Edward Kawas <edward.kawas@gmail.com>,
 # For copyright and disclaimer see below.
 #
-# $Id: ObjectCache.pm,v 1.3 2008/02/21 17:43:13 kawas Exp $
+# $Id: ObjectCache.pm,v 1.4 2008/04/30 16:53:26 kawas Exp $
 #-----------------------------------------------------------------
 
 package MOBY::RDF::Ontologies::Cache::ObjectCache;
@@ -20,6 +20,7 @@ use RDF::Core::Model::Serializer;
 
 use Fcntl ':flock';
 
+use MOBY::RDF::Utils;
 use MOBY::RDF::Ontologies::Objects;
 use MOBY::RDF::Ontologies::Cache::CacheUtils;
 use MOBY::Client::Central;
@@ -447,7 +448,8 @@ sub get_rdf {
 				}
 
 			}
-			$xml = $doc->toString();
+			$xml = $doc->toString() if $doc;
+			$xml = new MOBY::RDF::Utils->empty_rdf unless $doc;
 
 			# save new RDF file
 			open( FILE, ">$file" )

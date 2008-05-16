@@ -50,6 +50,7 @@ CREATE TABLE secondary_input (
   enum_value text,
   datatype enum('String','Integer','DateTime','Float','Boolean') default NULL,
   article_name varchar(255) default NULL,
+  description text,
   service_instance_id int(10) unsigned NOT NULL default '0',
   PRIMARY KEY  (secondary_input_id)
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1;

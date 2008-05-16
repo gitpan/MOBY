@@ -3,7 +3,7 @@
 # Author: Edward Kawas <edward.kawas@gmail.com>,
 # For copyright and disclaimer see below.
 #
-# $Id: ServiceTypeCache.pm,v 1.2 2008/02/21 17:15:40 kawas Exp $
+# $Id: ServiceTypeCache.pm,v 1.3 2008/04/30 16:53:45 kawas Exp $
 #-----------------------------------------------------------------
 
 package MOBY::RDF::Ontologies::Cache::ServiceTypeCache;
@@ -20,6 +20,7 @@ use RDF::Core::Model::Serializer;
 
 use Fcntl ':flock';
 
+use MOBY::RDF::Utils;
 use MOBY::RDF::Ontologies::ServiceTypes;
 use MOBY::RDF::Ontologies::Cache::CacheUtils;
 use MOBY::Client::Central;
@@ -447,7 +448,8 @@ sub get_rdf {
 				}
 
 			}
-			$xml = $doc->toString();
+			$xml = $doc->toString() if $doc;
+			$xml = new MOBY::RDF::Utils->empty_rdf unless $doc;
 
 			# save new RDF file
 			open( FILE, ">$file" )

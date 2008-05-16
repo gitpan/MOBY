@@ -1,5 +1,6 @@
 bin/scripts/moby-s-install.pl
 Changes
+drop_tables.sql
 inc/Module/AutoInstall.pm
 inc/Module/Install.pm
 inc/Module/Install/AutoInstall.pm
@@ -9,7 +10,6 @@ inc/Module/Install/Fetch.pm
 inc/Module/Install/Include.pm
 inc/Module/Install/Makefile.pm
 inc/Module/Install/Metadata.pm
-inc/Module/Install/Scripts.pm
 inc/Module/Install/Share.pm
 inc/Module/Install/Win32.pm
 inc/Module/Install/WriteAll.pm
@@ -54,9 +54,6 @@ lib/MOBY/MobyXMLConstants.pm
 lib/MOBY/MOBYXSLT.pm
 lib/MOBY/mysql.pm
 lib/MOBY/OntologyServer.pm
-lib/MOBY/RDF/Parsers/NamespaceParser.pm
-lib/MOBY/RDF/Parsers/ServiceTypeParser.pm
-lib/MOBY/RDF/Parsers/DatatypeParser.pm
 lib/MOBY/RDF/Ontologies/Cache/CacheUtils.pm
 lib/MOBY/RDF/Ontologies/Cache/NamespaceCache.pm
 lib/MOBY/RDF/Ontologies/Cache/ObjectCache.pm
@@ -66,6 +63,9 @@ lib/MOBY/RDF/Ontologies/Namespaces.pm
 lib/MOBY/RDF/Ontologies/Objects.pm
 lib/MOBY/RDF/Ontologies/Services.pm
 lib/MOBY/RDF/Ontologies/ServiceTypes.pm
+lib/MOBY/RDF/Parsers/DatatypeParser.pm
+lib/MOBY/RDF/Parsers/NamespaceParser.pm
+lib/MOBY/RDF/Parsers/ServiceTypeParser.pm
 lib/MOBY/RDF/Predicates/DC_PROTEGE.pm
 lib/MOBY/RDF/Predicates/FETA.pm
 lib/MOBY/RDF/Predicates/MOBY_PREDICATES.pm
@@ -119,5 +119,5 @@ t/CommonSubs.t
 t/Config.t
 t/CrossReference.t
 t/MOBY.t
+t/mobycentral.config
 t/Template.t
-
