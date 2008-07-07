@@ -11,14 +11,14 @@ collection_input table in the database
 
 =head1 SYNOPSIS
 
-NON FUNCTIONAL AT THIS TIME
+ #NON FUNCTIONAL AT THIS TIME
 
  use MOBY::collection_input;
  my $Instance = MOBY::collection_input->new(
           object_type => "Sequence",
           namespaces => ["genbank/gi", "genbank/Acc"],
           article_name => "InputSequenceThingy",
- )
+ );
 
 
 

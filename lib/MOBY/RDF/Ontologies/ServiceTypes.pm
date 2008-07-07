@@ -3,7 +3,7 @@
 # Author: Edward Kawas <edward.kawas@gmail.com>,
 # For copyright and disclaimer see below.
 #
-# $Id: ServiceTypes.pm,v 1.2 2008/02/21 17:15:41 kawas Exp $
+# $Id: ServiceTypes.pm,v 1.3 2008/06/19 21:49:01 kawas Exp $
 #-----------------------------------------------------------------
 
 package MOBY::RDF::Ontologies::ServiceTypes;
@@ -77,8 +77,8 @@ sub new {
     
     # save some information retrieved from mobycentral.config
     my $CONF  = MOBY::Config->new;
-	$self->{uri}       = $CONF->{mobyservice}->{resourceURL} || 'http://biomoby.org/RESOURCES/MOBY-S/Services#';
-	$self->{uri} = $self->{uri} . "#" unless $self->{uri} =~ m/^.*(\#{1})$/;
+	$self->{uri}       = $CONF->{mobyservice}->{resourceURL} || 'http://biomoby.org/RESOURCES/MOBY-S/Services/';
+	$self->{uri} = $self->{uri} . "/" unless $self->{uri} =~ m/^.*(\/{1})$/;
 	
 	$self->{query_all} = <<END;
 SELECT ot1.service_type, rt.relationship_type, ot2.service_type, ot1.description, ot1.service_lsid, ot1.authority, ot1.contact_email, ot2.service_lsid 

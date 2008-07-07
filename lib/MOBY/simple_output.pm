@@ -12,13 +12,14 @@ simple_output table in the database
 
 =head1 SYNOPSIS
 
-NON FUNCTIONAL AT THIS TIME
+ #NON FUNCTIONAL AT THIS TIME
+ 
  use MOBY::simple_output;
  my $Instance = MOBY::simple_output->new(
           object_type => "Sequence",
           namespaces => ["genbank/gi", "genbank/Acc"],
           article_name => "InputSequenceThingy",
- )
+ );
  print $Instance->simple_output_id;
  print $Instance->service_instance_id;
 

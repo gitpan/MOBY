@@ -3,7 +3,7 @@
 # Author: Edward Kawas <edward.kawas@gmail.com>,
 # For copyright and disclaimer see below.
 #
-# $Id: Objects.pm,v 1.3 2008/02/21 17:19:11 kawas Exp $
+# $Id: Objects.pm,v 1.4 2008/06/19 21:49:01 kawas Exp $
 #-----------------------------------------------------------------
 
 package MOBY::RDF::Ontologies::Objects;
@@ -78,8 +78,8 @@ sub new {
 	
 	# save some information retrieved from mobycentral.config
     my $CONF  = MOBY::Config->new;
-	$self->{uri}       = $CONF->{mobyobject}->{resourceURL} || 'http://biomoby.org/RESOURCES/MOBY-S/Objects#';
-	$self->{uri} = $self->{uri} . "#" unless $self->{uri} =~ m/^.*(\#{1})$/;
+	$self->{uri}       = $CONF->{mobyobject}->{resourceURL} || 'http://biomoby.org/RESOURCES/MOBY-S/Objects/';
+	$self->{uri} = $self->{uri} . "/" unless $self->{uri} =~ m/^.*(\/{1})$/;
 	
 	$self->{uri_comp} = $self->{uri};
 	$self->{uri_comp} =~ s/\/MOBY\-S\//\/MOBY_SUB_COMPONENT\//;

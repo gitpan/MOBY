@@ -18,7 +18,7 @@ authority table in the database
        authority_uri => "ncbi.nlm.nih.gov",
        contact_email => "mr.BIG@ncbi.nlm.nih.gov",
 
- )
+ );
  print $Instance->authority_id;
 
 

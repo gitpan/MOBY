@@ -12,13 +12,14 @@ collection_output table in the database
 
 =head1 SYNOPSIS
 
-NON FUNCTIONAL AT THIS TIME
+ #NON FUNCTIONAL AT THIS TIME
+ 
  use MOBY::collection_output;
  my $Instance = MOBY::collection_output->new(
           object_type => "Sequence",
           namespaces => ["genbank/gi", "genbank/Acc"],
           article_name => "InputSequenceThingy",
- )
+ );
 
 
 =cut

@@ -12,14 +12,14 @@ simple_input table in the database
 
 =head1 SYNOPSIS
 
-NON FUNCTIONAL AT THIS TIME
+ #NON FUNCTIONAL AT THIS TIME
 
  use MOBY::simple_input;
  my $Instance = MOBY::simple_input->new(
           object_type => "Sequence",
           namespaces => ["genbank/gi", "genbank/Acc"],
           article_name => "InputSequenceThingy",
- )
+ );
  print $Instance->simple_input_id;
  print $Instance->service_instance_id;
 

@@ -1,4 +1,5 @@
 bin/scripts/moby-s-install.pl
+bin/scripts/moby-s-caching.pl
 Changes
 drop_tables.sql
 inc/Module/AutoInstall.pm
@@ -118,6 +119,5 @@ t/Client-SimpleArticle.t
 t/CommonSubs.t
 t/Config.t
 t/CrossReference.t
-t/MOBY.t
 t/mobycentral.config
 t/Template.t

@@ -552,7 +552,6 @@ sub header {
 		if(exists($URI2ACTION{$uri})) {
 			$uri = $URI2ACTION{$uri}[0].'/'.(defined($URI2ACTION{$uri}[1])?$URI2ACTION{$uri}[1]:$method);
 		}
-		print STDERR "GURI $uri\n";
 		$myHeader .= "<wsa:Action wsu:Id=\"Action\">".$uri."/".$method."Response</wsa:Action>";
 	}
 	

@@ -2,25 +2,32 @@
 #
 # Prepare the stage...
 #
-# $Id: moby-s-install.pl,v 1.4 2008/04/30 17:08:30 kawas Exp $
+# $Id: moby-s-install.pl,v 1.12 2008/07/02 20:49:23 kawas Exp $
 # Contact: Edward Kawas <edward.kawas@gmail.com>
 # -----------------------------------------------------------
 
 BEGIN {
 	use Getopt::Std;
-	use vars qw/ $opt_h $opt_F /;
+	use vars qw/ $opt_h /;
 	getopt;
 
 	# usage
 	if ($opt_h) {
 		print STDOUT <<'END_OF_USAGE';
 Preparing the stage for hosting a BioMOBY registry.
-Usage: [-F]
+Usage: moby-s-install.pl [-h]
 
-    --- SYNOPSIS HERE ---
+	-h .... shows this message ;-)
+	
+    Installer script for installing a BioMOBY registry
     
-	The existing files are not overwritten - unless an option -F
-    has been used.
+    This script goes through and edits your apache configuration,
+    mysql settings, and installs cgi scripts needed to host your
+    own registry. It is best to do this as root, because items are
+    copied into priviledged locations (apache directory, etc.).
+    
+    Good luck!
+	
 
 END_OF_USAGE
 		exit(0);
@@ -30,6 +37,11 @@ END_OF_USAGE
 
 	sub say { print @_, "\n"; }
 
+	# query is for creating the moby_username and password for local access to dbs
+	sub prepare_query { 
+		my $s = join "", @_;
+		return qq|GRANT ALL ON $s TO ?\@'localhost' IDENTIFIED BY ? WITH GRANT OPTION|;
+	}
 	sub check_module {
 		eval "require $_[0]";
 		if ($@) {
@@ -133,11 +145,12 @@ sub prompt_for_directory {
 		$dir = $prompted_dir unless $dir;
 		return $dir if -d $dir and -w $dir;    # okay: writable directory
 		next
-		  if -w $dir
-		  and say "'$dir' is not a writable directory. Try again please.";
-		next
 		  if ( not -e $dir )
 		  and say "'$dir' does not exist. Try again please.";
+
+		next
+		  if ( not -w $dir )
+		  and say "'$dir' is not a writable directory. Try again please.";
 	}
 }
 
@@ -279,10 +292,11 @@ s/^(lsid_namespace\s*\=\s*)(.*)$/$1 . $LSIDS->{$current_section}->{'NAMESPACE'}/
 			  unless $same_resource;
 			( print $fh $_ or die "Cannot write into '$filename': $!\n" )
 			  if $same_resource;
+
 		}
 		close FILETEMPL or die "Cannot close '$file_template': $!\n";
 		close FILEOUT unless $same_resource;
-		close $fh;
+		close $fh if defined $fh;
 
 		do {
 			open FILEOUT, ">$file"
@@ -373,9 +387,14 @@ sub prompt_moby_config_info {
 	  prompt_user_input( "What is your root mysql username?", "root" );
 	my $password =
 	  prompt_user_input( "What is your root mysql users' password?", "" );
+	$password = "" unless $password;
 	my $url  = prompt_user_input( "What is the mysql url?",    "localhost" );
 	my $port = prompt_user_input( "What is the mysql port #?", "3306" );
 
+	# prompt for a new user/password combo so that people cant determine the root password from MOBY::Config
+	my $moby_username = prompt_user_input( "What username (I will create it if it doesn't exist)\n  would you like to access your local db?", "moby_user" );
+	my $moby_password = prompt_user_input( "Please provide a password for '$moby_username': ", "" ); 
+	$moby_password = "" unless $moby_password;
 	#db names
 	say
 "\nPrompting for mysql table names. Use default names unless you know what you are doing!";
@@ -398,10 +417,12 @@ sub prompt_moby_config_info {
 You have provided the following values: 
 
 mySQL Details
-   username :   $username
-   password :   $password
-   URL      :   $url
-   port     :   $port
+   username             :   $username
+   password             :   $password
+   URL                  :   $url
+   port                 :   $port
+   registry db username :   $moby_username
+   registry db password :   $moby_password
 	
 Tables:
    Object ontology         :   $m_object
@@ -414,9 +435,10 @@ EOF
 	say($msg);
 
 	return (
-			 $username,  $password,    $url,
-			 $port,      $m_object,    $m_relationship,
-			 $m_service, $m_namespace, $m_central
+			 $username,      $password,    $url,
+			 $port,          $m_object,    $m_relationship,
+			 $m_service,     $m_namespace, $m_central,
+			 $moby_username, $moby_password
 	);
 }
 
@@ -457,8 +479,44 @@ sub fill_out_moby_conf {
 		{}
 	);
 
+	# since the file contains the root DB password
+	# make it only readable by root
+	chmod 0644, $file;
+	die "Couldn't make MOBY config file readable only by root: $!"
+	    if $?;
+
 	# finished!
 	return;
+}
+
+sub check_root {
+	# assume that windows has no security preventing the copying of files
+	return if MSWIN;
+    unless (getpwuid($<) eq 'root') { 
+	print STDOUT <<EOT;
+
+Hmmm - you are not installing this as root. If you indicate any
+system directories for the installation, such as '/usr/local', then
+you do not have permission to install files there. If so, you should
+cancel now with ^C, su to root, and restart.
+
+If you will not specify any system directories, you can proceed.
+
+EOT
+
+        print STDOUT "Should I proceed? [n] ";
+        my $tmp = <STDIN>;  $tmp =~ s/\s//g; 
+        exit() unless $tmp =~ /y/i;
+    } else {
+        print STDOUT <<EOT;
+
+Take care! you are installing this as ** root **. Please take the normal 
+precautions that you would ordinarily take when installing software as root. 
+In particular, be careful with ownership, paths, and environment variables.
+
+EOT
+
+    }
 }
 
 # --- main ---
@@ -469,612 +527,743 @@ use MOBY::dbConfig;
 use MOBY::Client::Central;
 use File::Temp qw/ tempfile /;
 use DBI;
+
+# give a waring if we are not running with su privelege
+check_root();
+
 say "Installing a mobycentral registry ...\n";
+
+my $answer;
 
 my $apache_base = "";
 my $apache_conf = "";
 my $apache_cgi  = "";
 my $perl_exec   = "/usr/bin/perl";
+
+# make sure perl exists
+if (not -x $perl_exec) {
+    $perl_exec = '';
+}
+
+# check for debian
+if (-e "/etc/debian_version") {
+    $apache_base = "/var/lib";
+    $apache_conf = "/etc/apache2";
+    $apache_cgi  = "/usr/lib/cgi-bin";
+}
+
 my (
 	 $username,  $password,    $url,
 	 $port,      $m_object,    $m_relationship,
-	 $m_service, $m_namespace, $m_central
+	 $m_service, $m_namespace, $m_central,
+	 $moby_username, $moby_password
 );
 
-$apache_base =
-  prompt_for_directory( "What is the base installation path of apache?", "" );
-$apache_conf =
-  prompt_for_directory( "What is the path of the apache 'conf' directory?",
-						"$apache_base/conf" );
-$apache_cgi =
-  prompt_for_directory( "What is the path of the apache 'cgi-bin' directory?",
-						"$apache_base/cgi-bin" );
-$perl_exec =
-  prompt_user_input( "What is the path to your perl executable?", $perl_exec );
+say "We are going to be placing files into your apache setup, in the cgi-bin/ directory and conf/ directory";
+
+unless ($apache_base) {
+    say <<EOT;
+
+I am not able to determing defaults for your apache setup, perhaps you have a
+custom install. Custom installs of have a base directory,
+e.g. '/usr/local/apache' under which all the other directories are placed.
+
+EOT
+
+    $apache_base = prompt_for_directory(
+	"What is the base installation path of apache?",
+	$apache_base );
+
+}
+
+$apache_conf ||= "$apache_base/conf";
+$apache_conf = prompt_for_directory(
+    "What is the path of the apache 'conf' directory?",
+    $apache_conf );
+
+$apache_cgi ||= "$apache_base/cgi-bin";
+$apache_cgi = prompt_for_directory(
+    "What is the path of the apache 'cgi-bin' directory?",
+    $apache_cgi );
+
+$perl_exec = prompt_user_input(
+    "What is the path to your perl executable?",
+    $perl_exec );
 $perl_exec = "$perl_exec -w";
 
-say "\nusing $apache_base as base directory ...";
-say "using $apache_conf as conf directory ...";
-say "using $apache_cgi as cgi directory ...";
-say "using '#!$perl_exec' as header for perl cgi scripts ...";
-say "";
+say <<EOT;
 
-do {
+using $apache_base as base directory ...
+using $apache_conf as conf directory ...
+using $apache_cgi as cgi directory ...
+using '#!$perl_exec' as header for perl cgi scripts ...
 
-	say "Configuring your MOBY/SQL config file ...";
+EOT
 
-	# mobycentral.config exists
-	if ( -e "$apache_conf/mobycentral.config" ) {
-		do {
+my $apache_info = <<EOT;
+To run MOBY Central we will need to configure your MySQL DB, and install three
+default variables into your apache webserver. If you are using Apache2 we will
+place a config file in your conf.d/ directory, otherwise if you are still using
+Apache1.3 we will need to modify your httpd.conf file.
 
-			# copy mobycentral.config to conf directory
-			(
-			   $username,  $password,    $url,
-			   $port,      $m_object,    $m_relationship,
-			   $m_service, $m_namespace, $m_central
-			  )
-			  = prompt_moby_config_info;
+You will be prompted before any changes are made.
 
-			# TODO - collect the values and do this at the end
-			# fill out mobycentral.config
-			fill_out_moby_conf(
-								"$apache_conf/mobycentral.config",
-								$username,  $password,    $url,
-								$port,      $m_object,    $m_relationship,
-								$m_service, $m_namespace, $m_central
-			);
+EOT
 
-		  }
-		  if pprompt(
-"Would you like to overwrite the file '$apache_conf/mobycentral.config'? [n] ",
-			-ynd => 'n'
-		  ) eq 'y';
-	} else {
-		say "  Installing the file '$apache_conf/mobycentral.config' ...";
+$answer = pprompt( "$apache_info\nShall we begin setting up apache? [n] ",
+		   -ynd => 'n' );
 
-		# fill out mobycentral.config
-		(
-		   $username,  $password,    $url,
-		   $port,      $m_object,    $m_relationship,
-		   $m_service, $m_namespace, $m_central
-		  )
-		  = prompt_moby_config_info;
+if ($answer eq 'y') {
 
-		# TODO - collect the values and do this at the end
-		fill_out_moby_conf(
-							"$apache_conf/mobycentral.config",
-							$username,  $password,    $url,
-							$port,      $m_object,    $m_relationship,
-							$m_service, $m_namespace, $m_central
+    say "Configuring your MOBY/SQL config file ...";
+
+    # mobycentral.config exists
+    if ( -e "$apache_conf/mobycentral.config" ) {
+	do {
+
+	    # copy mobycentral.config to conf directory
+	    (
+	     $username,      $password,    $url,
+	     $port,          $m_object,    $m_relationship,
+	     $m_service,     $m_namespace, $m_central,
+	     $moby_username, $moby_password
+	    )
+		= prompt_moby_config_info;
+
+	    # TODO - collect the values and do this at the end
+	    # fill out mobycentral.config
+	    fill_out_moby_conf("$apache_conf/mobycentral.config",
+			       $moby_username, $moby_password, $url,
+			       $port,          $m_object,      $m_relationship,
+			       $m_service,     $m_namespace,   $m_central
 		);
+
 	}
+	if pprompt(
+	    "Would you like to overwrite the file '$apache_conf/mobycentral.config'? [n] ",
+	    -ynd => 'n'
+	    ) eq 'y';
+    } else {
+	say "  Installing the file '$apache_conf/mobycentral.config' ...";
 
-	#install MOBY-Central.pl and OntologyServer.cgi
-	say "  Installing the MOBY-Central.pl & OntologyServer.cgi ...";
-	file_from_template(
-						"$apache_cgi/MOBY-Central.pl",
-						File::ShareDir::dist_file(
-												   'MOBY', 'cgi/MOBY-Central.pl'
-						),
-						'MOBY-Central Dispatch file',
-						{ '#!/usr/bin/perl -w' => "#!$perl_exec", }
+	# fill out mobycentral.config
+	(  $username,      $password,    $url,
+	   $port,          $m_object,    $m_relationship,
+	   $m_service,     $m_namespace, $m_central,
+	   $moby_username, $moby_password
+	) = prompt_moby_config_info;
+
+	# TODO - collect the values and do this at the end
+	fill_out_moby_conf("$apache_conf/mobycentral.config",
+			   $moby_username, $moby_password, $url,
+			   $port,          $m_object,      $m_relationship,
+			   $m_service,     $m_namespace,   $m_central
+	    );
+    }
+
+    #install MOBY-Central.pl and OntologyServer.cgi
+    say "  Installing the MOBY-Central.pl & OntologyServer.cgi ...";
+    file_from_template(
+	"$apache_cgi/MOBY-Central.pl",
+	File::ShareDir::dist_file('MOBY', 'cgi/MOBY-Central.pl'),
+	'MOBY-Central Dispatch file',
+	{ '#!/usr/bin/perl -w' => "#!$perl_exec", }
 	);
-	file_from_template(
-						"$apache_cgi/OntologyServer.cgi",
-						File::ShareDir::dist_file(
-												'MOBY', 'cgi/OntologyServer.cgi'
-						),
-						'MOBY-Central Ontology Server file',
-						{ '#!/usr/bin/perl -w' => "#!$perl_exec", }
+    file_from_template(
+	"$apache_cgi/OntologyServer.cgi",
+	File::ShareDir::dist_file('MOBY', 'cgi/OntologyServer.cgi'),
+	'MOBY-Central Ontology Server file',
+	{ '#!/usr/bin/perl -w' => "#!$perl_exec", }
 	);
 
-	#install the moby-admin module
-	file_from_template(
-						"$apache_cgi/MOBY-Admin.pl",
-						File::ShareDir::dist_file(
-												   'MOBY', 'cgi/MOBY-Admin.pl'
-						),
-						'MOBY-Admin Dispatch file',
-						{ '#!/usr/bin/perl -w' => "#!$perl_exec", }
+    #install the moby-admin module
+    file_from_template(
+	"$apache_cgi/MOBY-Admin.pl",
+	File::ShareDir::dist_file('MOBY', 'cgi/MOBY-Admin.pl'),
+	'MOBY-Admin Dispatch file',
+	{ '#!/usr/bin/perl -w' => "#!$perl_exec", }
 	);
 
-	# configure httpd.conf
-	if ( -e "$apache_conf/httpd.conf" ) {
-		say "I would like to add the following lines to your httpd.conf file:\n"
-		  . "\tSetEnv MOBY_CENTRAL_CONFIG \"$apache_conf/mobycentral.config\"\n"
-		  . "\tSetEnv MOBY_URI \"http://localhost/MOBY/Central\"\n"
-		  . "\tSetEnv MOBY_SERVER \"http://localhost/cgi-bin/MOBY/MOBY-Central.pl\"\n"
-		  . "\tSetEnv MOBY_ONTOLOGYSERVER \"http://localhost/cgi-bin/OntologyServer.cgi\"\n"
-		  . "Of course, those lines may not be exactly right, so I will give you a chance to modify them!\n";
-		do {
+	#
+	# Configure Apache - check for Apache2 first
+	#
 
-		  # pass in the value w/o the SETENV part ... we will add that ourselves
-			my $env1 = "$apache_conf/mobycentral.config";
-			my $env2 = "http://localhost/MOBY/Central";
-			my $env3 = "http://localhost/cgi-bin/MOBY-Central.pl";
-			my $env4 = "http://localhost/cgi-bin/OntologyServer.cgi";
+    say <<EOT;
+I would like to add the following lines to your httpd.conf file:
 
-			say
-"\nPlease review the following ensuring that [at least!] the domain name is correct!\n";
-			$env2 =
-			  prompt_user_input( "Enter a value for MOBY_URI: ", "$env2" );
-			$env3 =
-			  prompt_user_input( "Enter a value for MOBY_SERVER: ", "$env3" );
-			$env4 =
-			  prompt_user_input( "Enter a value for MOBY_ONTOLOGYSERVER: ",
-								 "$env4" );
+    SetEnv MOBY_CENTRAL_CONFIG "$apache_conf/mobycentral.config"
+    
+    SetEnv MOBY_URI "http://localhost/MOBY/Central"
+    
+    SetEnv MOBY_SERVER "http://localhost/cgi-bin/MOBY-Central.pl"
+    
+    SetEnv MOBY_ONTOLOGYSERVER "http://localhost/cgi-bin/OntologyServer.cgi"
 
- # create backup of httpd.conf and append the values to the begining of the file
-			open( DAT, "< $apache_conf/httpd.conf" )
-			  || die("Could not open file for reading!");
-			my @raw_data = <DAT>;
-			close(DAT);
+Of course, those lines may not be exactly right, so I will give you a chance to modify them!
 
-			open( DAT, "> $apache_conf/httpd.conf_backup" . time() )
-			  || die("Trouble creating a backup of httpd.conf!\n$@");
-			print DAT @raw_data;
-			close(DAT);
+EOT
 
-			my %added = (
-						  'DIRTY'               => 0,
-						  'MOBY_CENTRAL_CONFIG' => 0,
-						  'MOBY_URI'            => 0,
-						  'MOBY_SERVER'         => 0,
-						  'MOBY_ONTOLOGYSERVER' => 0,
-			);
-			tie @raw_data, 'Tie::File', "$apache_conf/httpd.conf" or die "$@";
-			for (@raw_data) {
+    # pass in the value w/o the SETENV part ... we will add that ourselves
+    my $env1 = "$apache_conf/mobycentral.config";
+    my $env2 = "http://localhost/MOBY/Central";
+    my $env3 = "http://localhost/cgi-bin/MOBY-Central.pl";
+    my $env4 = "http://localhost/cgi-bin/OntologyServer.cgi";
 
-				if (
-/SETENV\s*(MOBY_CENTRAL_CONFIG|MOBY_URI|MOBY_SERVER|MOBY_ONTOLOGYSERVER)\s*.*/gi
-				  )
-				{
-					$added{'DIRTY'}++;
-					if ( $1 eq "MOBY_CENTRAL_CONFIG" ) {
-						$_ = "SetEnv MOBY_CENTRAL_CONFIG \"$env1\"";
-						$added{$1} = 1;
-					} elsif ( $1 eq "MOBY_URI" ) {
-						$_ = "SetEnv MOBY_URI \"$env2\"";
-						$added{$1} = 1;
-					} elsif ( $1 eq "MOBY_SERVER" ) {
-						$_ = "SetEnv MOBY_SERVER \"$env3\"";
-						$added{$1} = 1;
-					} else {
-						$_ = "SetEnv MOBY_ONTOLOGYSERVER \"$env4\"";
-						$added{$1} = 1;
-					}
-				}
-			}
-			untie @raw_data;
+    say <<EOT;
+Please review the following ensuring that [at least!] the domain name is correct!
+EOT
 
-			do {
-				open( DAT, ">> $apache_conf/httpd.conf" )
-				  || die("Trouble updating httpd.conf!\n$@");
-				print DAT "\n# Values added by moby-s-install.pl\n"
-				  if $added{'DIRTY'} == 0;
-				print DAT "SetEnv MOBY_CENTRAL_CONFIG \"$env1\"\n"
-				  if $added{'MOBY_CENTRAL_CONFIG'} == 0;
-				print DAT "SetEnv MOBY_URI \"$env2\"\n"
-				  if $added{'MOBY_URI'} == 0;
-				print DAT "SetEnv MOBY_SERVER \"$env3\"\n"
-				  if $added{'MOBY_SERVER'} == 0;
-				print DAT "SetEnv MOBY_ONTOLOGYSERVER \"$env4\"\n"
-				  if $added{'MOBY_ONTOLOGYSERVER'} == 0;
-				close(DAT);
-			} unless $added{'DIRTY'} == 4;
+    $env2 = prompt_user_input( "Enter a value for MOBY_URI: ", $env2 );
+    $env3 = prompt_user_input( "Enter a value for MOBY_SERVER: ", $env3 );
+    $env4 = prompt_user_input( "Enter a value for MOBY_ONTOLOGYSERVER: ", 
+			       $env4 );
 
-			say
-"\nPlease don't forget to add the following ENV variables to your profile so that they\n"
-			  . "are always available when calling client BioMOBY API methods from scripts!\n"
-			  . "\tMOBY_CENTRAL_CONFIG = \"$env1\"\n"
-			  . "\tMOBY_URI = \"$env2\"\n"
-			  . "\tMOBY_SERVER = \"$env3\"\n"
-			  . "\tMOBY_ONTOLOGYSERVER = \"$env4\"\n";
 
-		  }
-		  if pprompt( "May I edit your httpd.conf file? [y] ", -ynd => 'y' ) eq
-		  'y';
+    if ( -d "$apache_conf/conf.d" ) {
+	say "Found Apache2 setup...";
+
+	my $conf_file = "$apache_conf/conf.d/moby.conf";
+
+	$answer = prompt("Going to create your Apache2 MOBY configuration at: $conf_file. Shall I proceed? [y] ", -ynd => 'y');
+
+	if ($answer eq 'y') {
+	    open( DAT, ">$conf_file" )
+		or die("Could not open $conf_file for reading!");
+
+	    print DAT <<EOT;
+# Values added by moby-s-install.pl
+SetEnv MOBY_CENTRAL_CONFIG "$env1"
+SetEnv MOBY_URI "$env2"
+SetEnv MOBY_SERVER "$env3"
+SetEnv MOBY_ONTOLOGYSERVER "$env4"
+EOT
+
 	}
+    } elsif (not -e "$apache_conf/httpd.conf" ) {
+	die "Could not detect Apache2 setup ($apache_conf/conf.d/) or Apache1.3 ($apache_conf/httpd.conf). Please restart and enter the correct info";
+    } else {
 
-} if pprompt( "Would you like to set up apache? [n] ", -ynd => 'n' ) eq 'y';
+	# configure httpd.conf create backup of httpd.conf and append the values
+	# to the begining of the file
 
-do {
+	$answer = pprompt( "May I edit your httpd.conf file? [y] ",
+			   -ynd => 'y' );
+	if ($answer eq 'y') {
+	    open( DAT, "< $apache_conf/httpd.conf" )
+		|| die("Could not open file for reading!");
+	    my @raw_data = <DAT>;
+	    close(DAT);
+
+	    open( DAT, "> $apache_conf/httpd.conf_backup" . time() )
+		|| die("Trouble creating a backup of httpd.conf!\n$@");
+	    print DAT @raw_data;
+	    close(DAT);
+
+	    my %added = (
+		'DIRTY'               => 0,
+		'MOBY_CENTRAL_CONFIG' => 0,
+		'MOBY_URI'            => 0,
+		'MOBY_SERVER'         => 0,
+		'MOBY_ONTOLOGYSERVER' => 0,
+		);
+	    tie @raw_data, 'Tie::File', "$apache_conf/httpd.conf" or die "$@";
+
+	    for (@raw_data) {
+
+		if (
+		    /SETENV\s*(MOBY_CENTRAL_CONFIG|MOBY_URI|MOBY_SERVER|MOBY_ONTOLOGYSERVER)\s*.*/gi
+		    )
+		{
+		    $added{'DIRTY'}++;
+		    if ( $1 eq "MOBY_CENTRAL_CONFIG" ) {
+			$_ = "SetEnv MOBY_CENTRAL_CONFIG \"$env1\"";
+			$added{$1} = 1;
+		    } elsif ( $1 eq "MOBY_URI" ) {
+			$_ = "SetEnv MOBY_URI \"$env2\"";
+			$added{$1} = 1;
+		    } elsif ( $1 eq "MOBY_SERVER" ) {
+			$_ = "SetEnv MOBY_SERVER \"$env3\"";
+			$added{$1} = 1;
+		    } else {
+			$_ = "SetEnv MOBY_ONTOLOGYSERVER \"$env4\"";
+			$added{$1} = 1;
+		    }
+		}
+	    }
+	    untie @raw_data;
+
+	    do {
+		open( DAT, ">> $apache_conf/httpd.conf" )
+		    || die("Trouble updating httpd.conf!\n$@");
+		print DAT "\n# Values added by moby-s-install.pl\n"
+		    if $added{'DIRTY'} == 0;
+		print DAT "SetEnv MOBY_CENTRAL_CONFIG \"$env1\"\n"
+		    if $added{'MOBY_CENTRAL_CONFIG'} == 0;
+		print DAT "SetEnv MOBY_URI \"$env2\"\n"
+		    if $added{'MOBY_URI'} == 0;
+		print DAT "SetEnv MOBY_SERVER \"$env3\"\n"
+		    if $added{'MOBY_SERVER'} == 0;
+		print DAT "SetEnv MOBY_ONTOLOGYSERVER \"$env4\"\n"
+		    if $added{'MOBY_ONTOLOGYSERVER'} == 0;
+		close(DAT);
+	    } unless $added{'DIRTY'} == 4;
+
+	    say <<EOT;
+Please do not forget to add the following ENV variables to your profile
+so that they are always available when calling client BioMOBY API methods
+from scripts!
+    MOBY_CENTRAL_CONFIG = "$env1"
+    MOBY_URI = "$env2"
+    MOBY_SERVER = "$env3"
+    MOBY_ONTOLOGYSERVER = "$env4"
+
+EOT
+	}
+    }
+}
+
+$answer = pprompt( "Would you like to set up mySQL? [n] ", -ynd => 'n' );
+if ($answer eq 'y') {
+
 	my $ready_to_go = 0;
 	my $sql_error   = 0;
 
 	#check to see if we can call mysql ... if not, then die!
+	my $mysql_installed = (`mysql --version 2>&1` =~ m/^mysql\s+Ver\s+.*$/);
+	my $mysql_started   = (`mysql -e "SHOW VARIABLES LIKE 'version'" 2>&1` !~ m/^ERROR 200.*Can't connect to .*$/);
 	print "mysql is installed ...\n"
-	  if `mysql --version 2>&1` =~ m/^mysql\s+Ver\s+.*$/;
+	    if $mysql_installed;
 	print "mysql is started ...\n"
-	  unless `mysql 2>&1` =~ m/^ERROR 200.*Can't connect to .*$/;
+	    if $mysql_started;
 
-	unless ( `mysql --version 2>&1` =~ m/^mysql\s+Ver\s+.*$/
-		 and not( `mysql 2>&1` =~ m/^ERROR .*Can't connect to local MySQL .*$/ )
-	  )
-	{
-		say
-"\nmysql doesn't seem to be accessible ... please ensure that it is on the path, started and try again.\n";
-		$sql_error = 1;
+	unless ($mysql_installed and $mysql_started) {
+	    die <<ERROR;
+MySQL does not seem to be accessible ... 
+Please ensure that the 'mysql' client program is in your path,
+and that the msqyl-server is started and try again.
+
+ERROR
 	}
 
-	# proceed if mysql check was good
-	do {
+	# have the values been set already?
+	$ready_to_go = 1
+	    if $username
+	    and $url
+	    and $port
+	    and $m_object
+	    and $m_relationship
+	    and $m_service
+	    and $m_namespace
+	    and $m_central,
+	    and $moby_username,
+	    and ($moby_password || $moby_password eq "");
 
-		# have the values been set already?
-		$ready_to_go = 1
-		  if $username
-		  and $url
-		  and $port
-		  and $m_object
-		  and $m_relationship
-		  and $m_service
-		  and $m_namespace
-		  and $m_central;
+	# check to see if mobycentral.config has been created in the conf
+	# directory first -> if so, parse it
 
-#check to see if mobycentral.config has been created in the conf directory first -> if so, parse it
-		if (    -e "$apache_conf/mobycentral.config"
-			 && !( -d "$apache_conf/mobycentral.config" )
-			 && !$ready_to_go )
-		{
-			my %db_sections = ();
-			open IN, "$apache_conf/mobycentral.config"
-			  or die
-"can't open MOBY Configuration file '$apache_conf/mobycentral.config' for unknown reasons: $!\n";
-			my @sections = split /(\[\s*\S+\s*\][^\[]*)/s, join "", <IN>;
-			foreach my $section (@sections) {
-				my $dbConfig = MOBY::dbConfig->new( section => $section );
-				next unless $dbConfig;
-				my $dbname = $dbConfig->section_title;
-				next unless $dbname;
-				$db_sections{$dbname} = $dbConfig;
-			}
+	if (    -e "$apache_conf/mobycentral.config"
+		&& !( -d "$apache_conf/mobycentral.config" )
+		&& !$ready_to_go )
+	{
+	    open IN, "$apache_conf/mobycentral.config"
+		or die
+		"can't open MOBY Configuration file '$apache_conf/mobycentral.config' for unknown reasons: $!\n";
 
-			$username       = $db_sections{mobycentral}->{username};
-			$password       = $db_sections{mobycentral}->{password} || "";
-			$url            = $db_sections{mobycentral}->{url};
-			$port           = $db_sections{mobycentral}->{port};
-			$m_object       = $db_sections{mobyobject}->{dbname};
-			$m_relationship = $db_sections{mobyrelationship}->{dbname};
-			$m_service      = $db_sections{mobyservice}->{dbname};
-			$m_namespace    = $db_sections{mobynamespace}->{dbname};
-			$m_central      = $db_sections{mobycentral}->{dbname};
+	    my @sections = split /(\[\s*\S+\s*\][^\[]*)/s, join "", <IN>;
+	    my %db_sections = ();
+	    foreach my $section (@sections) {
+			my $dbConfig = MOBY::dbConfig->new( section => $section );
+			next unless $dbConfig;
+			my $dbname = $dbConfig->section_title;
+			next unless $dbname;
+			$db_sections{$dbname} = $dbConfig;
+	    }
 
-			$ready_to_go = 1;
-		}
+	    $moby_username  = $db_sections{mobycentral}->{username};
+	    $moby_password  = $db_sections{mobycentral}->{password} || "";
+	    $url            = $db_sections{mobycentral}->{url};
+	    $port           = $db_sections{mobycentral}->{port};
+	    $m_object       = $db_sections{mobyobject}->{dbname};
+	    $m_relationship = $db_sections{mobyrelationship}->{dbname};
+	    $m_service      = $db_sections{mobyservice}->{dbname};
+	    $m_namespace    = $db_sections{mobynamespace}->{dbname};
+	    $m_central      = $db_sections{mobycentral}->{dbname};
 
-		# if the values havent been set, then prompt for them
-		do {
+	    $ready_to_go = 1;
+	}
 
-			say "  Installing the file '$apache_conf/mobycentral.config' ...";
+	# if the values havent been set, then prompt for them
+	unless ($ready_to_go) {
 
-			# fill out mobycentral.config
-			(
-			   $username,  $password,    $url,
-			   $port,      $m_object,    $m_relationship,
-			   $m_service, $m_namespace, $m_central
-			  )
-			  = prompt_moby_config_info;
-			fill_out_moby_conf(
-								"$apache_conf/mobycentral.config",
-								$username,  $password,    $url,
-								$port,      $m_object,    $m_relationship,
-								$m_service, $m_namespace, $m_central
-			);
+	    say "  Installing the file '$apache_conf/mobycentral.config' ...";
 
-		} unless $ready_to_go;
+	    # fill out mobycentral.config
+	    ($username,      $password,    $url,
+	     $port,          $m_object,    $m_relationship,
+	     $m_service,     $m_namespace, $m_central,
+	     $moby_username, $moby_password
+	    ) = prompt_moby_config_info;
 
-		# now start creating the tables
-		say "   creating the tables to use for the registry ...";
-		my %dbsections = (
-						   'mobycentral'      => $m_central,
-						   'mobyobject'       => $m_object,
-						   'mobyservice'      => $m_service,
-						   'mobynamespace'    => $m_namespace,
-						   'mobyrelationship' => $m_relationship
+	    fill_out_moby_conf(
+		"$apache_conf/mobycentral.config",
+		$moby_username, $moby_password, $url,
+		$port,          $m_object,          $m_relationship,
+		$m_service,     $m_namespace,       $m_central
+		);
+	}
+
+	# make sure that we have a root password/username
+	unless ($username and $password) {
+		$username = 
+			prompt_user_input( "What is your root mysql username?", "root" );
+		$password =
+			prompt_user_input( "What is your root mysql users' password?", "" );
+	}
+	# now start creating the tables
+	say "   creating the tables to use for the registry ...";
+	my %dbsections = (
+	    'mobycentral'      => $m_central,
+	    'mobyobject'       => $m_object,
+	    'mobyservice'      => $m_service,
+	    'mobynamespace'    => $m_namespace,
+	    'mobyrelationship' => $m_relationship
+	    );
+
+	my $clone = 0;
+	my $central;
+	$answer = pprompt( "Would you like to clone a mobycentral registry? [n] ",
+			   -ynd => 'n' );
+	if ($answer eq 'y') {
+	    $clone = 1;
+	    my %registries = (
+		default => {
+		    url => "http://moby.ucalgary.ca/moby/MOBY-Central.pl",
+		    uri => "http://moby.ucalgary.ca/MOBY/Central"
+		},
+		testing => {
+		    url => "http://bioinfo.icapture.ubc.ca/cgi-bin/mobycentral/MOBY-Central.pl",
+		    uri => "http://bioinfo.icapture.ubc.ca/MOBY/Central"
+		},
+		IRRI => {
+		    url => "http://cropwiki.irri.org/cgi-bin/MOBY-Central.pl",
+		    uri => "http://cropwiki.irri.org/MOBY/Central"
+		},
+
+		#			localhost => {
+		#					url=>"http://localhost/cgi-bin/MOBY-Central.pl",
+		#					uri=>"http://localhost/MOBY/Central"
+		#			},
+		);
+	    my $registry = pprompt( "What registry to use? [b] ",
+				    -d => 'b',
+				    -m => [ sort keys %registries ],
 		);
 
-		my $clone = 0;
-		my $central;
-		do {
-			$clone = 1;
-			my %registries = (
-				default => {
-						  url => "http://moby.ucalgary.ca/moby/MOBY-Central.pl",
-						  uri => "http://moby.ucalgary.ca/MOBY/Central"
-				},
-				testing => {
-					url =>
-"http://bioinfo.icapture.ubc.ca/cgi-bin/mobycentral/MOBY-Central.pl",
-					uri => "http://bioinfo.icapture.ubc.ca/MOBY/Central"
-				},
-				IRRI => {
-					  url => "http://cropwiki.irri.org/cgi-bin/MOBY-Central.pl",
-					  uri => "http://cropwiki.irri.org/MOBY/Central"
-				},
-
-				#			localhost => {
-				#					url=>"http://localhost/cgi-bin/MOBY-Central.pl",
-				#					uri=>"http://localhost/MOBY/Central"
-				#			},
-			);
-			my $registry = pprompt( "What registry to use? [b] ",
-									-m => [ sort keys %registries ] );
-
-			$central = MOBY::Client::Central->new(
-									 Registries => {
-										 mobycentral => {
-											 URL => $registries{$registry}{url},
-											 URI => $registries{$registry}{uri}
-										 }
-									 }
-			);
-		  }
-		  if pprompt( "Would you like to clone a mobycentral registry? [n] ",
-					  -ynd => 'n' ) eq 'y';
-		my $error = 0;
-		if ($clone) {
-			say "Getting db dumps ...";
-			my (
-				 $mobycentral,   $mobyobject, $mobyservice,
-				 $mobynamespace, $mobyrelationship
-			  )
-			  = $central->MOBY::Client::Central::DUMP();
-			my $drh = DBI->install_driver("mysql");
-
-			my ( $fh, $filename ) = tempfile( UNLINK => 1 );
-			say "Processing dump for service instances ...";
-			print $fh $mobycentral;
-			eval {
-				$drh->func( 'dropdb', $dbsections{mobycentral},
-							$url, $username, $password, 'admin' );
-			};
-			eval {
-				$drh->func( 'createdb', $dbsections{mobycentral},
-							$url, $username, $password, 'admin' );
-			};
-			system( "mysql -h $url -P $port -u $username --password=$password "
-					. $dbsections{mobycentral}
-					. "<$filename" ) == 0
-			  or ( say "Error populating service instance ontology ...\n$!"
-				   and $error++ );
-
-			( $fh, $filename ) = tempfile( UNLINK => 1 );
-			say "Processing dump for the objects ontology ...";
-			print $fh $mobyobject;
-			eval {
-				$drh->func( 'dropdb', $dbsections{mobyobject}, $url, $username,
-							$password, 'admin' );
-			};
-			eval {
-				$drh->func( 'createdb', $dbsections{mobyobject}, $url,
-							$username, $password, 'admin' );
-			};
-			system( "mysql -h $url -P $port -u $username --password=$password "
-					. $dbsections{mobyobject}
-					. "<$filename" ) == 0
-			  or
-			  ( say "Error populating objects ontology ...\n$!" and $error++ );
-
-			( $fh, $filename ) = tempfile( UNLINK => 1 );
-			say "Processing dump for service types ...";
-			print $fh $mobyservice;
-			eval {
-				$drh->func( 'dropdb', $dbsections{mobyservice},
-							$url, $username, $password, 'admin' );
-			};
-			eval {
-				$drh->func( 'createdb', $dbsections{mobyservice},
-							$url, $username, $password, 'admin' );
-			};
-			system( "mysql -h $url -P $port -u $username --password=$password "
-					. $dbsections{mobyservice}
-					. "<$filename" ) == 0
-			  or ( say "Error populating service types ontology ...\n$!"
-				   and $error++ );
-
-			( $fh, $filename ) = tempfile( UNLINK => 1 );
-			say "Processing dump for the namespace ontology ...";
-			print $fh $mobynamespace;
-			eval {
-				$drh->func( 'dropdb', $dbsections{mobynamespace},
-							$url, $username, $password, 'admin' );
-			};
-			eval {
-				$drh->func( 'createdb', $dbsections{mobynamespace},
-							$url, $username, $password, 'admin' );
-			};
-			system( "mysql -h $url -P $port -u $username --password=$password "
-					. $dbsections{mobynamespace}
-					. "<$filename" ) == 0
-			  or ( say "Error populating namespace ontology ...\n$!"
-				   and $error++ );
-
-			( $fh, $filename ) = tempfile( UNLINK => 1 );
-			say "Processing dump for the relationships ontology ...";
-			print $fh $mobyrelationship;
-			eval {
-				$drh->func( 'dropdb', $dbsections{mobyrelationship},
-							$url, $username, $password, 'admin' );
-			};
-			eval {
-				$drh->func( 'createdb', $dbsections{mobyrelationship},
-							$url, $username, $password, 'admin' );
-			};
-			system( "mysql -h $url -P $port -u $username --password=$password "
-					. $dbsections{mobyrelationship}
-					. "<$filename" ) == 0
-			  or ( say "Error populating relationships ontology ...\n$!"
-				   and $error++ );
-
-		} else {
-
-			# no clone, so create minimalist databases
-			my $drop_db = 0;
-
-			#ask for permission on dropping data from db ...
-			do {
-				$drop_db = 1;
-			  }
-			  if pprompt(
-				"Shall I drop all pre-existing databases used by BioMOBY? [n] ",
-				-ynd => 'n'
-			  ) eq 'y';
-
-			#process each db
-			foreach my $section ( keys %dbsections ) {
-				my $sqlfilepath = File::ShareDir::dist_file( 'MOBY',
-												   "db/schema/$section.mysql" );
-				my $drh = DBI->install_driver("mysql");
-
-				# drop the db
-				eval {
-					$drh->func( 'dropdb', $dbsections{$section}, $url,
-								$username, $password, 'admin' );
-				} if $drop_db;
-
-				# create the db
-				eval {
-					$drh->func( 'createdb', $dbsections{$section}, $url,
-								$username, $password, 'admin' );
-				};
-
-				#create the tables in the db
-				do {
-					say "\n\tProblem creating tables in the db: $section: $!";
-				  }
-				  unless system(
-					 "mysql -h $url -P $port -u $username --password=$password "
-					   . $dbsections{$section}
-					   . "<$sqlfilepath" ) == 0;
-				say "\tProcessing of $section completed ... ";
-			}
-			say "populating the tables with basic data ...";
-			%dbsections = (
-							'mobyobject'       => $m_object,
-							'mobyservice'      => $m_service,
-							'mobyrelationship' => $m_relationship
-			);
-			foreach my $section ( keys %dbsections ) {
-				my $sqlfilepath =
-				  File::ShareDir::dist_file( 'MOBY', "db/data/$section.data" );
-				system(
-					 "mysql -h $url -P $port -u $username --password=$password "
-					   . $dbsections{$section}
-					   . "<$sqlfilepath" ) == 0
-				  or say "\n\tProblem populating the db: $section: $!";
-				say "\tPopulation processing for db $section completed ...";
-			}
+	    $central = MOBY::Client::Central->new(
+		Registries => {
+		    mobycentral => {
+			URL => $registries{$registry}{url},
+			URI => $registries{$registry}{uri}
+		    }
 		}
+		);
+	}
+	my $error = 0;
+	if ($clone) {
+	    say "Getting db dumps ...";
+	    my ($mobycentral,   $mobyobject, $mobyservice,
+		$mobynamespace, $mobyrelationship
+		) = $central->MOBY::Client::Central::DUMP();
+	    my $drh = DBI->install_driver("mysql");
+	    # used for creating the user/pass for the registry
+	    my $dbh = DBI->connect("DBI:mysql:mysql:localhost:3306", "$username", "$password", { RaiseError => 1, AutoCommit => 1 });
+	    my ( $fh, $filename ) = tempfile( UNLINK => 1 );
+	    say "Processing dump for service instances ...";
+	    print $fh $mobycentral;
+	    eval {
+		$drh->func( 'dropdb', $dbsections{mobycentral},
+			    $url, $username, $password, 'admin' );
+	    };
+	    eval {
+		$drh->func( 'createdb', $dbsections{mobycentral},
+			    $url, $username, $password, 'admin' );
+	    };
+		eval {
+			my $db = $dbsections{mobycentral} . ".*";
+			$dbh->do(prepare_query($db),undef,$moby_username,$moby_password)
+			  || say ("Could not give '$moby_username' access to $db - Error:\n$DBI::errstr");
+		};
+		die $! if $!;
+	    system( "mysql -h $url -P $port -u $username --password=$password "
+		    . $dbsections{mobycentral}
+		    . "<$filename" ) == 0
+			or ( say "Error populating service instance ontology ...\n$!"
+			     and $error++ );
 
-		say "Set up of mySQL complete!" if $error == 0;
-		say
-"There were some problems encountered. Please correct the errors and re-run this script!"
-		  if $error > 0;
-	} unless $sql_error;
-} if pprompt( "Would you like to set up mySQL? [n] ", -ynd => 'n' ) eq 'y';
+	    ( $fh, $filename ) = tempfile( UNLINK => 1 );
+	    say "Processing dump for the objects ontology ...";
+	    print $fh $mobyobject;
+	    eval {
+		$drh->func( 'dropdb', $dbsections{mobyobject}, $url, $username,
+			    $password, 'admin' );
+	    };
+	    eval {
+		$drh->func( 'createdb', $dbsections{mobyobject}, $url,
+			    $username, $password, 'admin' );
+	    };
+	    eval {
+			my $db = $dbsections{mobyobject} . ".*"; 
+			$dbh->do(prepare_query($db),undef,$moby_username,$moby_password)
+			  || say ("Could not give '$moby_username' access to $db - Error:\n$DBI::errstr");
+		};
+	    system( "mysql -h $url -P $port -u $username --password=$password "
+		    . $dbsections{mobyobject}
+		    . "<$filename" ) == 0
+			or
+			( say "Error populating objects ontology ...\n$!" and $error++ );
 
-do {
+	    ( $fh, $filename ) = tempfile( UNLINK => 1 );
+	    say "Processing dump for service types ...";
+	    print $fh $mobyservice;
+	    eval {
+		$drh->func( 'dropdb', $dbsections{mobyservice},
+			    $url, $username, $password, 'admin' );
+	    };
+	    eval {
+		$drh->func( 'createdb', $dbsections{mobyservice},
+			    $url, $username, $password, 'admin' );
+	    };
+	    eval {
+			my $db = $dbsections{mobyservice} . ".*"; 
+			$dbh->do(prepare_query($db),undef,$moby_username,$moby_password)
+			  || say ("Could not give '$moby_username' access to $db - Error:\n$DBI::errstr");
+		};
+	    system( "mysql -h $url -P $port -u $username --password=$password "
+		    . $dbsections{mobyservice}
+		    . "<$filename" ) == 0
+			or ( say "Error populating service types ontology ...\n$!"
+			     and $error++ );
+
+	    ( $fh, $filename ) = tempfile( UNLINK => 1 );
+	    say "Processing dump for the namespace ontology ...";
+	    print $fh $mobynamespace;
+	    eval {
+		$drh->func( 'dropdb', $dbsections{mobynamespace},
+			    $url, $username, $password, 'admin' );
+	    };
+	    eval {
+		$drh->func( 'createdb', $dbsections{mobynamespace},
+			    $url, $username, $password, 'admin' );
+	    };
+	    eval {
+			my $db = $dbsections{mobynamespace} . ".*";  
+			$dbh->do(prepare_query($db),undef,$moby_username,$moby_password)
+			  || say ("Could not give '$moby_username' access to $db - Error:\n$DBI::errstr");
+		};
+	    system( "mysql -h $url -P $port -u $username --password=$password "
+		    . $dbsections{mobynamespace}
+		    . "<$filename" ) == 0
+			or ( say "Error populating namespace ontology ...\n$!"
+			     and $error++ );
+
+	    ( $fh, $filename ) = tempfile( UNLINK => 1 );
+	    say "Processing dump for the relationships ontology ...";
+	    print $fh $mobyrelationship;
+	    eval {
+		$drh->func( 'dropdb', $dbsections{mobyrelationship},
+			    $url, $username, $password, 'admin' );
+	    };
+	    eval {
+		$drh->func( 'createdb', $dbsections{mobyrelationship},
+			    $url, $username, $password, 'admin' );
+	    };
+	    eval {
+			my $db = $dbsections{mobyrelationship} . ".*";  
+			$dbh->do(prepare_query($db),undef,$moby_username,$moby_password)
+			  || say ("Could not give '$moby_username' access to $db - Error:\n$DBI::errstr");
+		};
+	    system( "mysql -h $url -P $port -u $username --password=$password "
+		    . $dbsections{mobyrelationship}
+		    . "<$filename" ) == 0
+			or ( say "Error populating relationships ontology ...\n$!"
+			     and $error++ );
+
+	} else {
+
+	    # no clone, so create minimalist databases
+	    my $drop_db = 0;
+
+	    #ask for permission on dropping data from db ...
+	    $answer = pprompt(
+		"Shall I drop all pre-existing databases used by BioMOBY? [n] ",
+		-ynd => 'n'
+		);
+	    if ($answer eq 'y') {
+		$drop_db = 1;
+	    }
+
+	    #process each db
+	    foreach my $section ( keys %dbsections ) {
+			my $sqlfilepath = File::ShareDir::dist_file( 'MOBY',
+								     "db/schema/$section.mysql" );
+			my $drh = DBI->install_driver("mysql");
+			# used for creating the user/pass for the registry
+	    	my $dbh = DBI->connect("DBI:mysql:mysql:localhost:3306", "root", "root", { RaiseError => 1, AutoCommit => 1 });
+			# drop the db
+			eval {
+			    $drh->func( 'dropdb', $dbsections{$section}, $url,
+					$username, $password, 'admin' );
+			} if $drop_db;
+	
+			# create the db
+			eval {
+			    $drh->func( 'createdb', $dbsections{$section}, $url,
+					$username, $password, 'admin' );
+			};
+
+			# give moby_username permission to access it
+			eval {
+				my $db = $dbsections{$section} . ".*";  
+				$dbh->do(prepare_query($db),undef,$moby_username,$moby_password)
+				  || say ("Could not give '$moby_username' access to $db - Error:\n$DBI::errstr");
+			};
+			#create the tables in the db
+			do {
+			    say "\n\tProblem creating tables in the db: $section: $!";
+			}
+			unless system(
+			    "mysql -h $url -P $port -u $username --password=$password "
+			    . $dbsections{$section}
+			    . "<$sqlfilepath" ) == 0;
+			say "\tProcessing of $section completed ... ";
+	    }
+	    say "populating the tables with basic data ...";
+	    %dbsections = (
+		'mobyobject'       => $m_object,
+		'mobyservice'      => $m_service,
+		'mobyrelationship' => $m_relationship
+		);
+	    foreach my $section ( keys %dbsections ) {
+			my $sqlfilepath =
+			    File::ShareDir::dist_file( 'MOBY', "db/data/$section.data" );
+			system(
+			    "mysql -h $url -P $port -u $username --password=$password "
+			    . $dbsections{$section}
+			    . "<$sqlfilepath" ) == 0
+				or (say "\n\tProblem populating the db: $section: $!" and $error++);
+			say "\tPopulation processing for db $section completed ...";
+	    }
+	}
+
+	say "Set up of mySQL complete!" if $error == 0;
+	say
+	    "There were some problems encountered. Please correct the errors and re-run this script!"
+	    if $error > 0;
+} 
+
+$answer = pprompt( "Would you like to install the RESOURCES script? [y] ",
+		   -ynd => 'y' );
+if ($answer eq 'y') {
 	my $exists = 0;
 
 	# install the script, confirm if it exists
-	do {
-		$exists = 1;
-		do {
-			$exists = 0;
-		  }
-		  if pprompt( "The RESOURCES script already exists, overwrite? [n] ",
-					  -ynd => 'n' ) eq 'y';
-	} if -e "$apache_cgi/RESOURCES";
+	if (-e "$apache_cgi/RESOURCES") {
+	    $exists = 1;
+	    $answer = pprompt( "The RESOURCES script already exists, overwrite? [n] ",
+			       -ynd => 'n' );
+	    if ($answer eq 'y') {
+		$exists = 0;
+	    }
+	} 
 
 	my $rdf_cache_location =
 	  prompt_for_directory_expand(
-								 "Where would you like to store the RDF cache?",
-								 "$apache_base/moby_cache" );
+	      "Where would you like to store the RDF cache?",
+	      "$apache_base/moby_cache" );
 
 	say
 "Please make sure that you make that directory read/writable by your web server!\n";
 
 	# copy the file
-	file_from_template(
-						"$apache_cgi/RESOURCES",
-						File::ShareDir::dist_file( 'MOBY', 'cgi/RESOURCES' ),
-						'RESOURCES script',
-						{ '#!/usr/bin/perl -w' => "#!$perl_exec", }
-	  )
-	  if $exists == 0;
+	if ($exists == 0) {
+	    file_from_template(
+		"$apache_cgi/RESOURCES",
+		File::ShareDir::dist_file( 'MOBY', 'cgi/RESOURCES' ),
+		'RESOURCES script',
+		{ '#!/usr/bin/perl -w' => "#!$perl_exec", }
+		)
+	}
 
 	# update mobycentral.config file to reflect the location of the script
-	do {
+	$answer = pprompt(
+"Shall we update mobycentral.config to reflect the installation of this script? [y] ",
+	    -ynd => 'y');
+	if ($answer eq 'y') {
 
-		# confirm server name, etc then change the values
-		my $url = "http://localhost/cgi-bin";
-		$url =
-		  prompt_user_input(
-					 "Please enter the correct url to your cgi-bin directory: ",
-					 "$url" );
+	    # confirm server name, etc then change the values
+	    my $url = "http://localhost/cgi-bin";
+	    $url = prompt_user_input(
+		"Please enter the correct url to your cgi-bin directory: ",
+		"$url" );
 
-		# make sure that the key resourceURL exists ...
-		my $search = search_config_file(
-								   "$apache_conf/mobycentral.config",
-								   {
-									 'mobycentral' => {
-														'resourceURL'  => 0,
-														'allResources' => 0,
-														'rdf_cache'    => 0
-									 },
-									 'mobyobject'    => { 'resourceURL' => 0 },
-									 'mobyservice'   => { 'resourceURL' => 0 },
-									 'mobynamespace' => { 'resourceURL' => 0 },
-								   }
+	    # make sure that the key resourceURL exists ...
+	    my $search = search_config_file(
+		"$apache_conf/mobycentral.config",
+		{
+		    'mobycentral' => {
+			'resourceURL'  => 0,
+			'allResources' => 0,
+			'rdf_cache'    => 0,
+		    },
+		    'mobyobject'    => { 'resourceURL' => 0 },
+		    'mobyservice'   => { 'resourceURL' => 0 },
+		    'mobynamespace' => { 'resourceURL' => 0 },
+		}
 		);
-		add_missing_keys_to_config_file( "$apache_conf/mobycentral.config",
-										 $search );
+	    add_missing_keys_to_config_file( "$apache_conf/mobycentral.config",
+					     $search );
 
-		# copy the information
-		config_file_from_template(
-			"$apache_conf/mobycentral.config",
-			"$apache_conf/mobycentral.config",
-			'MOBY/SQL Configuration file',
+	    # copy the information
+	    config_file_from_template(
+		"$apache_conf/mobycentral.config",
+		"$apache_conf/mobycentral.config",
+		'MOBY/SQL Configuration file',
 
-			# mysql settings
-			{ 'rdf_cache' => "$rdf_cache_location" },
+		# mysql settings
+		{ 'rdf_cache' => "$rdf_cache_location" },
 
-			# db section mappings
-			{},
+		# db section mappings
+		{},
 
-			# resource urls
-			{
-			   'ALL'           => "$url/RESOURCES/MOBY-S/FULL",
-			   'mobycentral'   => "$url/RESOURCES/MOBY-S/ServiceInstances",
-			   'mobyobject'    => "$url/RESOURCES/MOBY-S/Objects",
-			   'mobynamespace' => "$url/RESOURCES/MOBY-S/Namespaces",
-			   'mobyservice'   => "$url/RESOURCES/MOBY-S/Services",
-			},
+		# resource urls
+		{
+		    'ALL'           => "$url/RESOURCES/MOBY-S/FULL",
+		    'mobycentral'   => "$url/RESOURCES/MOBY-S/ServiceInstances",
+		    'mobyobject'    => "$url/RESOURCES/MOBY-S/Objects",
+		    'mobynamespace' => "$url/RESOURCES/MOBY-S/Namespaces",
+		    'mobyservice'   => "$url/RESOURCES/MOBY-S/Services",
+		},
 
-			# lsid info
-			{}
+		# lsid info
+		{}
 		);
 	  }
-	  if pprompt(
-"Shall we update mobycentral.config to reflect the installation of this script? [y] ",
-		-ynd => 'y'
-	  ) eq 'y';
-  }
-  if pprompt( "Would you like to install the RESOURCES script? [y] ",
-			  -ynd => 'y' ) eq 'y';
+}
 
-do {
+$answer = pprompt( "Would you like to install the LSID authority script? [y] ",
+		   -ynd => 'y' );
+if ($answer eq 'y') {
 
 	# install the script, confirm if it exists
 	my $exists = 0;
-	do {
-		$exists = 1;
-		do {
-			$exists = 0;
-		  }
-		  if pprompt( "The authority script already exists, overwrite? [n] ",
-					  -ynd => 'n' ) eq 'y';
-	} if -e "$apache_cgi/authority.pl";
+	if (-e "$apache_cgi/authority.pl") {
+	    $exists = 1;
+	    $answer = pprompt( "The authority script already exists, overwrite? [n] ",
+			       -ynd => 'n' );
+	    if ($answer eq 'y') {
+		$exists = 0;
+	    }
+	} 
 
 	file_from_template(
 		"$apache_cgi/authority.pl",    
@@ -1085,38 +1274,41 @@ do {
 	  if $exists == 0;
 
 	# update mobycentral.config file to reflect the particulars of the script
-	do {
+	$answer = pprompt(
+"Shall we update mobycentral.config to reflect the installation of this script? [y] ",
+	    -ynd => 'y');
+	if ($answer eq 'y') {
 
-		#ask for namespace/authority information
+	    #ask for namespace/authority information
 
-		# make sure that the key lsid_namespace & lsid_authority exists ...
-		my $search = search_config_file(
-										 "$apache_conf/mobycentral.config",
-										 {
-										   'mobycentral' => {
-														  'lsid_namespace' => 0,
-														  'lsid_authority' => 0
-										   },
-										   'mobyobject' => {
-														  'lsid_namespace' => 0,
-														  'lsid_authority' => 0
-										   },
-										   'mobyservice' => {
-														  'lsid_namespace' => 0,
-														  'lsid_authority' => 0
-										   },
-										   'mobynamespace' => {
-														  'lsid_namespace' => 0,
-														  'lsid_authority' => 0
-										   },
-										   'mobyrelationship' => {
-														  'lsid_namespace' => 0,
-														  'lsid_authority' => 0
-										   },
-										 }
+	    # make sure that the key lsid_namespace & lsid_authority exists ...
+	    my $search = search_config_file(
+		"$apache_conf/mobycentral.config",
+		{
+		    'mobycentral' => {
+			'lsid_namespace' => 0,
+			'lsid_authority' => 0,
+		    },
+		    'mobyobject' => {
+			'lsid_namespace' => 0,
+			'lsid_authority' => 0,
+		    },
+		    'mobyservice' => {
+			'lsid_namespace' => 0,
+			'lsid_authority' => 0,
+		    },
+		    'mobynamespace' => {
+			'lsid_namespace' => 0,
+			'lsid_authority' => 0,
+		    },
+		    'mobyrelationship' => {
+			'lsid_namespace' => 0,
+			'lsid_authority' => 0,
+		    },
+		}
 		);
 		add_missing_keys_to_config_file( "$apache_conf/mobycentral.config",
-										 $search );
+						 $search );
 
 		# copy the information
 		config_file_from_template(
@@ -1136,85 +1328,92 @@ do {
 			# lsid info
 			{
 			   'mobycentral' => {
-				   'NAMESPACE' => prompt_user_input(
+			       'NAMESPACE' => prompt_user_input(
 "Please enter an LSID namespace for the services ontology: ",
-					   "serviceinstance"
+				   "serviceinstance"
 				   ),
 				   'AUTHORITY' => prompt_user_input(
-							   "Please enter the LSID authority for services: ",
-							   "biomoby.org"
+				       "Please enter the LSID authority for services: ",
+				       "biomoby.org"
 				   ),
 			   },
 			   'mobyobject' => {
 				   'NAMESPACE' => prompt_user_input(
 "Please enter an LSID namespace for the datatype ontology: ",
-					   "objectclass"
+				       "objectclass"
 				   ),
 				   'AUTHORITY' => prompt_user_input(
-							  "Please enter the LSID authority for datatypes: ",
-							  "biomoby.org"
+"Please enter the LSID authority for datatypes: ",
+				       "biomoby.org"
 				   ),
 			   },
 			   'mobyservice' => {
 				   'NAMESPACE' => prompt_user_input(
 "Please enter an LSID namespace for the service types ontology: ",
-					   "servicetype"
+				       "servicetype"
 				   ),
 				   'AUTHORITY' => prompt_user_input(
-						  "Please enter the LSID authority for service types: ",
-						  "biomoby.org"
+"Please enter the LSID authority for service types: ",
+				       "biomoby.org"
 				   ),
 			   },
 			   'mobynamespace' => {
 				   'NAMESPACE' => prompt_user_input(
 "Please enter an LSID namespace for the namespaces ontology: ",
-					   "namespacetype"
+				       "namespacetype"
 				   ),
 				   'AUTHORITY' => prompt_user_input(
-							 "Please enter the LSID authority for namespaces: ",
-							 "biomoby.org"
+"Please enter the LSID authority for namespaces: ",
+				       "biomoby.org"
 				   ),
 			   },
 			   'mobyrelationship' => {
 				   'NAMESPACE' => prompt_user_input(
 "Please enter an LSID namespace for the relationship ontology: ",
-					   "relationshiptype"
+				       "relationshiptype"
 				   ),
 				   'AUTHORITY' => prompt_user_input(
-						  "Please enter the LSID authority for relationships: ",
-						  "biomoby.org"
+"Please enter the LSID authority for relationships: ",
+				       "biomoby.org"
 				   ),
 			   },
 			}
-		);
-	  }
-	  if pprompt(
-"Shall we update mobycentral.config to reflect the installation of this script? [y] ",
-		-ynd => 'y'
-	  ) eq 'y';
+		    );
+	}
+	
+	# tell the user to make sure that apache serves the script from
+	# http://domain.com/authority
 
-# tell the user to make sure that apache serves the script from http://domain.com/authority
-	say
-"\nPlease ensure that you set up apache to serve the script from\n\t'http://your.domain/authority'\nso that the script will work properly!\n";
-  }
-  if pprompt( "Would you like to install the LSID authority script? [y] ",
-			  -ynd => 'y' ) eq 'y';
+	say <<EOT;
+Please ensure that you set up apache to serve the script from:
 
-do {
+    'http://your.domain/authority'
+
+so that the script will work properly!
+EOT
+}
+
+$answer = pprompt(
+"Would you like to auxillary scripts? These include the service pinger, a test page for the rdf agent, an RDF generator page, etc? [y] ",
+	-ynd => 'y'
+    );
+if ($answer eq 'y') {
 
 	# prompt for a location for the service_tester_path
 	my $service_tester_path =
 	  prompt_for_directory_expand(
-					 "Where would you like to place the service pinger script?",
-					 "$apache_base/moby_tester" );
+	      "Where would you like to place the service pinger script?",
+	      "$apache_base/moby_tester" );
 	say
 'Please make sure that you make that directory read/writable by your web server!\n';
 
 	# make sure that the key service_tester_path exists for the config file
-	my $search = search_config_file( "$apache_conf/mobycentral.config",
-						 { 'mobycentral' => { 'service_tester_path' => 0, } } );
+	my $search = search_config_file(
+	    "$apache_conf/mobycentral.config",
+	    { 'mobycentral' => { 'service_tester_path' => 0, } } 
+	    );
 	add_missing_keys_to_config_file( "$apache_conf/mobycentral.config",
-									 $search );
+					 $search );
 
 	# copy the information
 	config_file_from_template(
@@ -1236,61 +1435,56 @@ do {
 	);
 
 	file_from_template(
-						"$service_tester_path/service_tester.pl",
-						File::ShareDir::dist_file(
-												 'MOBY', 'cgi/service_tester.pl'
-						),
-						'MOBY-Central service tester script',
-						{ '#!/usr/bin/perl -w' => "#!$perl_exec", }
+	    "$service_tester_path/service_tester.pl",
+	    File::ShareDir::dist_file(
+		'MOBY', 'cgi/service_tester.pl'
+	    ),
+	    'MOBY-Central service tester script',
+	    { '#!/usr/bin/perl -w' => "#!$perl_exec", }
 	);
 	say
 'Please don\'t forget to place the service pinger on a cron! TODO - explain how to do that!';
 
 	#copy the other scripts now
 	file_from_template(
-						"$apache_cgi/AgentRDFValidator",
-						File::ShareDir::dist_file(
-												 'MOBY', 'cgi/AgentRDFValidator'
-						),
-						'The RDF agent validator page',
-						{ '#!/usr/bin/perl -w' => "#!$perl_exec", }
-	);
+	    "$apache_cgi/AgentRDFValidator",
+	    File::ShareDir::dist_file(
+		'MOBY', 'cgi/AgentRDFValidator'
+	    ),
+	    'The RDF agent validator page',
+	    { '#!/usr/bin/perl -w' => "#!$perl_exec", }
+	    );
 	file_from_template(
-						"$apache_cgi/GenerateRDF.cgi",
-						File::ShareDir::dist_file(
-												   'MOBY', 'cgi/GenerateRDF.cgi'
-						),
-						'MOBY-Central service instance RDF generating form',
-						{ '#!/usr/bin/perl -w' => "#!$perl_exec", }
-	);
+	    "$apache_cgi/GenerateRDF.cgi",
+	    File::ShareDir::dist_file(
+		'MOBY', 'cgi/GenerateRDF.cgi'
+	    ),
+	    'MOBY-Central service instance RDF generating form',
+	    { '#!/usr/bin/perl -w' => "#!$perl_exec", }
+	    );
 	file_from_template(
-						"$apache_cgi/Moby",
-						File::ShareDir::dist_file( 'MOBY', 'cgi/Moby' ),
-						'MOBY-Central test page for auxillary scripts',
-						{ '#!/usr/bin/perl -w' => "#!$perl_exec", }
-	);
+	    "$apache_cgi/Moby",
+	    File::ShareDir::dist_file( 'MOBY', 'cgi/Moby' ),
+	    'MOBY-Central test page for auxillary scripts',
+	    { '#!/usr/bin/perl -w' => "#!$perl_exec", }
+	    );
 	file_from_template(
-						"$apache_cgi/ServicePingerValidator",
-						File::ShareDir::dist_file(
-											'MOBY', 'cgi/ServicePingerValidator'
-						),
-						'MOBY-Central service invocation test form',
-						{ '#!/usr/bin/perl -w' => "#!$perl_exec", }
-	);
+	    "$apache_cgi/ServicePingerValidator",
+	    File::ShareDir::dist_file(
+		'MOBY', 'cgi/ServicePingerValidator'
+	    ),
+	    'MOBY-Central service invocation test form',
+	    { '#!/usr/bin/perl -w' => "#!$perl_exec", }
+	    );
 	file_from_template(
-						"$apache_cgi/ValidateService",
-						File::ShareDir::dist_file(
-												   'MOBY', 'cgi/ValidateService'
-						),
-						'MOBY-Central service tester information page',
-						{ '#!/usr/bin/perl -w' => "#!$perl_exec", }
-	);
-  }
-  if pprompt(
-"Would you like to auxillary scripts? These include the service pinger, a test page for the rdf agent, an RDF generator page, etc? [y] ",
-	-ynd => 'y'
-  ) eq 'y';
-
+	    "$apache_cgi/ValidateService",
+	    File::ShareDir::dist_file(
+		'MOBY', 'cgi/ValidateService'
+	    ),
+	    'MOBY-Central service tester information page',
+	    { '#!/usr/bin/perl -w' => "#!$perl_exec", }
+	    );
+}
 #
 
 say

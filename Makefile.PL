@@ -3,7 +3,7 @@
 
 	# Define metadata
 	name 'MOBY';
-	version '1.04';
+	version '1.05';
 	license 'perl';
 	abstract
 'This distribution is for communicating with or creating your own MOBY Central registry';
@@ -106,6 +106,7 @@ END_OF_TEXT
 	no_index 'directory' => 'bin/scripts';
 
 	install_script 'bin/scripts/moby-s-install.pl';
+	install_script 'bin/scripts/moby-s-caching.pl';
 
 	install_share 'share';
 

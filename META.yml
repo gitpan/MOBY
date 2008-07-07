@@ -41,4 +41,4 @@ requires:
   XML::DOM: 0
   XML::LibXML: 1.62
   XML::XPath: 1.12
-version: 1.04
+version: 1.05

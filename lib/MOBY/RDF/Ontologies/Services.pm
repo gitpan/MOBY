@@ -3,7 +3,7 @@
 # Author: Edward Kawas <edward.kawas@gmail.com>,
 # For copyright and disclaimer see below.
 #
-# $Id: Services.pm,v 1.3 2008/04/01 18:26:19 kawas Exp $
+# $Id: Services.pm,v 1.6 2008/06/25 16:13:02 kawas Exp $
 #-----------------------------------------------------------------
 
 package MOBY::RDF::Ontologies::Services;
@@ -15,6 +15,8 @@ use RDF::Core::Literal;
 use RDF::Core::Statement;
 use RDF::Core::Model::Serializer;
 use RDF::Core::NodeFactory;
+
+use Digest::MD5;
 
 use XML::LibXML;
 
@@ -42,6 +44,8 @@ use strict;
 MOBY::RDF::Ontologies::Services - Create RDF/OWL for Moby
 
 =head1 SYNOPSIS
+
+	use MOBY::RDF::Ontologies::Services;
 
 	my $x = MOBY::RDF::Ontologies::Services->new;
 
@@ -111,12 +115,14 @@ sub new {
 	# save some information retrieved from mobycentral.config
 	my $CONF = MOBY::Config->new;
 
-	# FIXME get me from api call
-	$self->{instance_uri}  = $CONF->{mobycentral}->{resourceURL}   || '';
-	$self->{service_uri}   = $CONF->{mobyservice}->{resourceURL}   || '';
-	$self->{datatype_uri}  = $CONF->{mobyobject}->{resourceURL}    || '';
-	$self->{namespace_uri} = $CONF->{mobynamespace}->{resourceURL} || '';
-
+	# set the uris unless an endpoint was specified
+	do {
+		$self->{instance_uri}  = $CONF->{mobycentral}->{resourceURL}   || '';
+		$self->{service_uri}   = $CONF->{mobyservice}->{resourceURL}   || '';
+		$self->{datatype_uri}  = $CONF->{mobyobject}->{resourceURL}    || '';
+		$self->{namespace_uri} = $CONF->{mobynamespace}->{resourceURL} || '';
+	} unless $args{endpoint};
+	
 	# save the endpoint/namespace/uri if passed in
 	$self->{endpoint}  = $args{endpoint} if $args{endpoint};
 	$self->{namespace} = $args{endpoint} if $args{namespace};
@@ -148,28 +154,29 @@ sub new {
 
 		#revert to a default value if nothing is retrieved
 		$self->{instance_uri} =
-		  'http://biomoby.org/RESOURCES/MOBY-S/ServiceInstances#'
+		  'http://biomoby.org/RESOURCES/MOBY-S/ServiceInstances/'
 		  unless $moby->{ServiceInstance}->[0];
-		$self->{service_uri} = 'http://biomoby.org/RESOURCES/MOBY-S/Services#'
+		$self->{service_uri} = 'http://biomoby.org/RESOURCES/MOBY-S/Services/'
 		  unless $moby->{Services}->[0];
 		$self->{namespace_uri} =
-		  'http://biomoby.org/RESOURCES/MOBY-S/Namespaces#'
+		  'http://biomoby.org/RESOURCES/MOBY-S/Namespaces/'
 		  unless $moby->{Namespaces}->[0];
-		$self->{datatype_uri} = 'http://biomoby.org/RESOURCES/MOBY-S/Objects#'
+		$self->{datatype_uri} = 'http://biomoby.org/RESOURCES/MOBY-S/Objects/'
 		  unless $moby->{Objects}->[0];
 	}
 
 	# add a / at the end of the uri if it isnt there already
-	$self->{instance_uri} = $self->{instance_uri} . "#"
-	  unless $self->{instance_uri} =~ m/^.*(\#{1})$/;
-	$self->{service_uri} = $self->{service_uri} . "#"
-	  unless $self->{service_uri} =~ m/^.*(\#{1})$/;
-	$self->{namespace_uri} = $self->{namespace_uri} . "#"
-	  unless $self->{namespace_uri} =~ m/^.*(\#{1})$/;
-	$self->{datatype_uri} = $self->{datatype_uri} . "#"
-	  unless $self->{datatype_uri} =~ m/^.*(\#{1})$/; 
+	$self->{instance_uri} = $self->{instance_uri} . "/"
+	  unless $self->{instance_uri} =~ m/^.*(\/{1})$/;
+	$self->{service_uri} = $self->{service_uri} . "/"
+	  unless $self->{service_uri} =~ m/^.*(\/{1})$/;
+	$self->{namespace_uri} = $self->{namespace_uri} . "/"
+	  unless $self->{namespace_uri} =~ m/^.*(\/{1})$/;
+	$self->{datatype_uri} = $self->{datatype_uri} . "/"
+	  unless $self->{datatype_uri} =~ m/^.*(\/{1})$/; 
 
-	$self->{is_alive_path} = $CONF->{mobycentral}->{service_tester_path};
+	#set the isAlive path
+	$self->{is_alive_path} = $CONF->{mobycentral}->{service_tester_path} if $ENV{MOBY_SERVER} and $self->{endpoint} and $ENV{MOBY_SERVER} eq $self->{endpoint};
 
 	# done
 	return $self;
@@ -254,7 +261,14 @@ sub _createRDFModel {
 	my $model        = new RDF::Core::Model( Storage => $storage );
 	my $node_factory = new RDF::Core::NodeFactory();
 
+	# used to create bnode IDs
+	my $digest = new Digest::MD5;
+
 	foreach my $SI (@$services) {
+		# used for computing checksums
+		my $service_name = $SI->name;
+		my $service_authority = $SI->authority;
+
 		my $resource =
 		  new RDF::Core::Resource( $self->{instance_uri},
 								   $SI->authority . "," . $SI->name );
@@ -352,7 +366,10 @@ sub _createRDFModel {
 			} unless $addIsAlive  =~ /no/i;
 		};
 		# add the authoring statements
-		my $bnode = $node_factory->newResource;
+		my $bnode = new RDF::Core::Resource(
+			$self->{instance_uri}, 
+			$digest->md5_hex("$service_authority/$service_name/" . MOBY::RDF::Predicates::FETA->providedBy )
+		); #$node_factory->newResource;
 		$model->addStmt(
 				  new RDF::Core::Statement(
 					  $resource,
@@ -384,17 +401,20 @@ sub _createRDFModel {
 			 )
 		);
 		$model->addStmt(
-						 new RDF::Core::Statement(
-							 $bnode,
-							 $resource->new( MOBY::RDF::Predicates::RDF->type ),
-							 new RDF::Core::Resource(
-									   MOBY::RDF::Predicates::FETA->organisation
-							 )
-						 )
+			new RDF::Core::Statement(
+				$bnode,
+				$resource->new( MOBY::RDF::Predicates::RDF->type ),
+					new RDF::Core::Resource(
+						MOBY::RDF::Predicates::FETA->organisation
+				)
+			)
 		);
 
 		# add parameter statements
-		my $operation = $node_factory->newResource;
+		my $operation = new RDF::Core::Resource(
+			$self->{instance_uri}, 
+			$digest->md5_hex("$service_authority/$service_name/" . MOBY::RDF::Predicates::FETA->hasOperation)
+		); # $node_factory->newResource;
 		$model->addStmt(
 				new RDF::Core::Statement(
 					$resource,
@@ -419,7 +439,10 @@ sub _createRDFModel {
 										MOBY::RDF::Predicates::FETA->operation )
 						 )
 		);
-		$bnode = $node_factory->newResource;
+		$bnode = new RDF::Core::Resource(
+			$self->{instance_uri}, 
+			$digest->md5_hex("$service_authority/$service_name/" . MOBY::RDF::Predicates::FETA->performsTask)
+		); # $node_factory->newResource;
 		$model->addStmt(
 				new RDF::Core::Statement(
 					$operation,
@@ -448,7 +471,15 @@ sub _createRDFModel {
 
 		my $inputs = $SI->input;
 		foreach (@$inputs) {
-			my $inputParameter = $node_factory->newResource;
+			my $inputParameter = new RDF::Core::Resource(
+				$self->{instance_uri}, 
+				$digest->md5_hex(
+					"$service_authority/$service_name/" 
+					. ($_->isSimple ? "isSimple/" : "isCollection/") 
+					. MOBY::RDF::Predicates::FETA->inputParameter 
+					. "/" 
+					. $_->articleName)
+			); # $node_factory->newResource;
 			$model->addStmt(
 							 new RDF::Core::Statement(
 								 $operation,
@@ -478,7 +509,18 @@ sub _createRDFModel {
 						 )
 				);
 
-				my $oType = $node_factory->newResource;
+				my $oType = new RDF::Core::Resource(
+					$self->{instance_uri}, 
+					$digest->md5_hex(
+						"$service_authority/$service_name/" 
+						. ($_->isSimple ? "isSimple/" : "isCollection/" )
+						. MOBY::RDF::Predicates::FETA->inputParameter
+						. "/"
+						. $_->articleName
+						. "/"
+						. $_->objectType
+					)
+				); # $node_factory->newResource;
 				$model->addStmt(
 								 new RDF::Core::Statement(
 									 $inputParameter,
@@ -499,7 +541,16 @@ sub _createRDFModel {
 					)
 				);
 
-				my $pType = $node_factory->newResource;
+				my $pType = new RDF::Core::Resource(
+					$self->{instance_uri}, 
+					$digest->md5_hex(
+						"$service_authority/$service_name/" 
+						. ($_->isSimple ? "isSimple/" : "isCollection/" )
+						. MOBY::RDF::Predicates::FETA->hasParameterType
+						. "/"
+						. $_->articleName
+					)
+				); # $node_factory->newResource;
 				$model->addStmt(
 						   new RDF::Core::Statement(
 							   $inputParameter,
@@ -520,7 +571,17 @@ sub _createRDFModel {
 				);
 				my $namespaces = $_->namespaces;
 				foreach my $n (@$namespaces) {
-					my $inNamespaces = $node_factory->newResource;
+					my $inNamespaces = new RDF::Core::Resource(
+						$self->{instance_uri}, 
+						$digest->md5_hex(
+							"$service_authority/$service_name/" 
+							. ($_->isSimple ? "isSimple/" : "isCollection/") 
+							. MOBY::RDF::Predicates::FETA->inputParameter 
+							. "/" 
+							. $_->articleName
+							. "/" 
+							. $n)
+						); # $node_factory->newResource;
 					$model->addStmt(
 							   new RDF::Core::Statement(
 								   $inputParameter,
@@ -571,7 +632,16 @@ sub _createRDFModel {
 						 )
 				);
 
-				my $pType = $node_factory->newResource;
+				my $pType = new RDF::Core::Resource(
+					$self->{instance_uri}, 
+					$digest->md5_hex(
+						"$service_authority/$service_name/" 
+						. ($_->isSimple ? "isSimple/" : "isCollection/" )
+						. MOBY::RDF::Predicates::FETA->hasParameterType
+						. "/"
+						. $_->articleName
+					)
+				); # $node_factory->newResource;
 				$model->addStmt(
 						   new RDF::Core::Statement(
 							   $inputParameter,
@@ -593,7 +663,18 @@ sub _createRDFModel {
 
 				my $simples = $_->Simples;
 				foreach my $simp (@$simples) {
-					my $oType = $node_factory->newResource;
+					my $oType = new RDF::Core::Resource(
+					$self->{instance_uri}, 
+					$digest->md5_hex(
+						"$service_authority/$service_name/" 
+						. ($_->isSimple ? "isSimple/" : "isCollection/" )
+						. MOBY::RDF::Predicates::FETA->inputParameter
+						. "/"
+						. $_->articleName
+						. "/"
+						. $simp->objectType
+					)
+				); # $node_factory->newResource;
 					$model->addStmt(
 								 new RDF::Core::Statement(
 									 $inputParameter,
@@ -615,7 +696,17 @@ sub _createRDFModel {
 					);
 					my $namespaces = $simp->namespaces;
 					foreach my $n (@$namespaces) {
-						my $inNamespaces = $node_factory->newResource;
+						my $inNamespaces = new RDF::Core::Resource(
+						$self->{instance_uri}, 
+						$digest->md5_hex(
+							"$service_authority/$service_name/" 
+							. ($_->isSimple ? "isSimple/" : "isCollection/") 
+							. MOBY::RDF::Predicates::FETA->inputParameter 
+							. "/" 
+							. $_->articleName
+							. "/" 
+							. $n)
+						); # $node_factory->newResource;
 						$model->addStmt(
 							   new RDF::Core::Statement(
 								   $inputParameter,
@@ -658,7 +749,15 @@ sub _createRDFModel {
 
 		foreach (@$secondaries) {
 			next unless $_->isSecondary;
-			my $inputParameter = $node_factory->newResource;
+			my $inputParameter =  new RDF::Core::Resource(
+				$self->{instance_uri}, 
+				$digest->md5_hex(
+					"$service_authority/$service_name/" 
+					. "isSecondaryInputParameter/"
+					. MOBY::RDF::Predicates::FETA->inputParameter 
+					. "/" 
+					. $_->articleName)
+			); #$node_factory->newResource;
 			$model->addStmt(
 							 new RDF::Core::Statement(
 								 $operation,
@@ -678,7 +777,16 @@ sub _createRDFModel {
 						 )
 			);
 
-			my $pType = $node_factory->newResource;
+			my $pType = new RDF::Core::Resource(
+					$self->{instance_uri}, 
+					$digest->md5_hex(
+						"$service_authority/$service_name/" 
+						. "isSecondary/"
+						. MOBY::RDF::Predicates::FETA->hasParameterType
+						. "/"
+						. $_->articleName
+					)
+				); # $node_factory->newResource;
 			$model->addStmt(
 						   new RDF::Core::Statement(
 							   $inputParameter,
@@ -767,7 +875,15 @@ sub _createRDFModel {
 
 		my $outputs = $SI->output;
 		foreach (@$outputs) {
-			my $outputParameter = $node_factory->newResource;
+			my $outputParameter = new RDF::Core::Resource(
+				$self->{instance_uri}, 
+				$digest->md5_hex(
+					"$service_authority/$service_name/" 
+					. ($_->isSimple ? "isSimple/" : "isCollection/") 
+					. MOBY::RDF::Predicates::FETA->outputParameter 
+					. "/" 
+					. $_->articleName)
+			); # $node_factory->newResource;
 			$model->addStmt(
 							new RDF::Core::Statement(
 								$operation,
@@ -797,7 +913,18 @@ sub _createRDFModel {
 						 )
 				);
 
-				my $oType = $node_factory->newResource;
+				my $oType = new RDF::Core::Resource(
+					$self->{instance_uri}, 
+					$digest->md5_hex(
+						"$service_authority/$service_name/" 
+						. ($_->isSimple ? "isSimple/" : "isCollection/" )
+						. MOBY::RDF::Predicates::FETA->outputParameter
+						. "/"
+						. $_->articleName
+						. "/"
+						. $_->objectType
+					)
+				); # $node_factory->newResource;
 				$model->addStmt(
 								 new RDF::Core::Statement(
 									 $outputParameter,
@@ -818,7 +945,16 @@ sub _createRDFModel {
 					)
 				);
 
-				my $pType = $node_factory->newResource;
+				my $pType = new RDF::Core::Resource(
+					$self->{instance_uri}, 
+					$digest->md5_hex(
+						"$service_authority/$service_name/" 
+						. ($_->isSimple ? "isSimple/" : "isCollection/" )
+						. MOBY::RDF::Predicates::FETA->hasParameterType
+						. "/"
+						. $_->articleName
+					)
+				); # $node_factory->newResource;
 				$model->addStmt(
 						   new RDF::Core::Statement(
 							   $outputParameter,
@@ -839,7 +975,17 @@ sub _createRDFModel {
 				);
 				my $namespaces = $_->namespaces;
 				foreach my $n (@$namespaces) {
-					my $inNamespaces = $node_factory->newResource;
+					my $inNamespaces = new RDF::Core::Resource(
+						$self->{instance_uri}, 
+						$digest->md5_hex(
+							"$service_authority/$service_name/" 
+							. ($_->isSimple ? "isSimple/" : "isCollection/") 
+							. MOBY::RDF::Predicates::FETA->outputParameter 
+							. "/" 
+							. $_->articleName
+							. "/" 
+							. $n)
+						); # $node_factory->newResource;
 					$model->addStmt(
 							   new RDF::Core::Statement(
 								   $outputParameter,
@@ -890,7 +1036,16 @@ sub _createRDFModel {
 						 )
 				);
 
-				my $pType = $node_factory->newResource;
+				my $pType = new RDF::Core::Resource(
+					$self->{instance_uri}, 
+					$digest->md5_hex(
+						"$service_authority/$service_name/" 
+						. ($_->isSimple ? "isSimple/" : "isCollection/" )
+						. MOBY::RDF::Predicates::FETA->hasParameterType
+						. "/"
+						. $_->articleName
+					)
+				); # $node_factory->newResource;
 				$model->addStmt(
 						   new RDF::Core::Statement(
 							   $outputParameter,
@@ -912,7 +1067,18 @@ sub _createRDFModel {
 
 				my $simples = $_->Simples;
 				foreach my $simp (@$simples) {
-					my $oType = $node_factory->newResource;
+					my $oType = new RDF::Core::Resource(
+					$self->{instance_uri}, 
+					$digest->md5_hex(
+						"$service_authority/$service_name/" 
+						. ($_->isSimple ? "isSimple/" : "isCollection/" )
+						. MOBY::RDF::Predicates::FETA->outputParameter
+						. "/"
+						. $_->articleName
+						. "/"
+						. $simp->objectType
+					)
+				); # $node_factory->newResource;
 					$model->addStmt(
 								 new RDF::Core::Statement(
 									 $outputParameter,
@@ -934,7 +1100,17 @@ sub _createRDFModel {
 					);
 					my $namespaces = $simp->namespaces;
 					foreach my $n (@$namespaces) {
-						my $inNamespaces = $node_factory->newResource;
+						my $inNamespaces = new RDF::Core::Resource(
+						$self->{instance_uri}, 
+						$digest->md5_hex(
+							"$service_authority/$service_name/" 
+							. ($_->isSimple ? "isSimple/" : "isCollection/") 
+							. MOBY::RDF::Predicates::FETA->outputParameter 
+							. "/" 
+							. $_->articleName
+							. "/" 
+							. $n)
+						); # $node_factory->newResource;
 						$model->addStmt(
 							   new RDF::Core::Statement(
 								   $outputParameter,

@@ -3,7 +3,7 @@
 # Author: Edward Kawas <edward.kawas@gmail.com>,
 # For copyright and disclaimer see below.
 #
-# $Id: ServiceCache.pm,v 1.3 2008/04/30 16:53:36 kawas Exp $
+# $Id: ServiceCache.pm,v 1.5 2008/06/19 21:47:35 kawas Exp $
 #-----------------------------------------------------------------
 
 package MOBY::RDF::Ontologies::Cache::ServiceCache;
@@ -169,7 +169,7 @@ sub create_service_cache {
 
 		$xml = MOBY::RDF::Ontologies::Services->new(
 										   endpoint => $self->{utils}->_endpoint );
-		$xml = $xml->findService( { authURI => $name } );
+		$xml = $xml->findService( { authURI => $name, isAlive => 'no' } );
 		my $file = File::Spec->catfile(
 							$self->{utils}->cachedir,
 							$self->{utils}->_clean( $self->{utils}->_endpoint ),
@@ -241,7 +241,7 @@ sub update_service_cache {
 	}
 
 	# steps:
-	# read in the LIST file and extract lsids for all datatypes
+	# read in the LIST file and extract lsids for all services
 	my $file = File::Spec->catfile(
 							$self->{utils}->cachedir,
 							$self->{utils}->_clean( $self->{utils}->_endpoint ),
@@ -287,17 +287,27 @@ sub update_service_cache {
 		$new_services{$name}{$lsid} = 1;
 	}
 
-# go through the keys of the new one and if the keys doesnt exist or has been modified, add to 'download' queue
+    # go through the keys of the new one and if the keys doesnt exist or has been modified, add to 'download' queue
 	foreach my $auth ( keys %new_services ) {
 		next if $changed_services{$auth};
 		foreach my $lsid ( keys %{ $new_services{$auth} } ) {
-			next unless !$old_services{$auth}{$lsid};
-			$changed_services{$auth} = 1;
+			$changed_services{$auth} = 1 unless $old_services{$auth}{$lsid};
+			delete $old_services{$auth}{$lsid} if $old_services{$auth}{$lsid};
+			
 		}
-
 	}
 
-   # if their where changes, save new LIST file over the old one and get changes
+	# iterate over old_services and add their authority to changed_services
+	# old services should only have authorities with services that have been removed 
+	foreach my $auth ( keys %old_services ) {
+		next if $changed_services{$auth};
+		foreach my $lsid ( keys %{ $old_services{$auth} } ) {
+			next if $changed_services{$auth};
+			$changed_services{$auth} = 1;
+		}
+	}
+	
+    # if their where changes, save new LIST file over the old one and get changes
 	if ( keys %changed_services ) {
 
 		# save new LIST file
@@ -317,7 +327,7 @@ sub update_service_cache {
 			$xml = MOBY::RDF::Ontologies::Services->new(
 										  endpoint => $self->{utils}->_endpoint, );
 
-			$xml = $xml->findService( { authURI => $authURI } );
+			$xml = $xml->findService( { authURI => $authURI, isAlive => 'no' } );
 			$file = File::Spec->catfile(
 							$self->{utils}->cachedir,
 							$self->{utils}->_clean( $self->{utils}->_endpoint ),
@@ -351,7 +361,7 @@ sub update_service_cache {
 			  	or $filename eq $self->{utils}->UPDATE_FILE;
 			  	
 			unlink($path) unless $new_services{$filename};
-			$wasOld++;
+			$wasOld++ unless $new_services{$filename};
 		}
 	};
 	return $wasOld;
@@ -486,14 +496,14 @@ sub _get_service_providers {
 		}
 	  );
 
-	my $xml = $soap->retrieveServiceNames()->result;
+	my $xml = $soap->retrieveServiceProviders()->result;
 	my %providers = ();
 	
 	my $parser                = XML::LibXML->new();
 	my $doc                   = $parser->parse_string($xml);
-	my $nodes = $doc->documentElement()->getChildrenByTagName('serviceName');
+	my $nodes = $doc->documentElement()->getChildrenByTagName('serviceProvider');
 	for ( 1 .. $nodes->size() ) {
-		my $name = $nodes->get_node($_)->getAttribute('authURI');
+		my $name = $nodes->get_node($_)->getAttribute('name');
 		next if $providers{$name};
 		$providers{$name} = 1;
 	}

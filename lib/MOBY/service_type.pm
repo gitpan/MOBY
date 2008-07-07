@@ -15,7 +15,7 @@ service_type table in the database
  my $Instance = MOBY::service_type->new(
       rdf_definition => "URI:LSID:www.biomoby.org:services:Blast",
       name "Blast",
- )
+ );
  print $Instance->service_type_id;
 
 

@@ -96,7 +96,7 @@ sub _readSections {
 				chomp $l2;
 				last unless ( $l2 =~ /\S/ );
 				my @terms = shellwords($l2);
-				last unless ( scalar @terms > 2 );
+				last unless ( scalar @terms >= 2 );
 				$self->{ $terms[0] } = $terms[2];
 			}
 		}

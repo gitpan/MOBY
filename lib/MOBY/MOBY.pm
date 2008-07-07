@@ -10,7 +10,7 @@ BEGIN {
 	$VERSION = '0.85';
 	@ISA       = qw{ Exporter };
 	@EXPORT    = qw{};
-	@EXPORT_OK = qw{};
+	@EXPORT_OK = qw{}; 
 }
 
 
@@ -54,7 +54,7 @@ On *nix machines, install as follows:
 
 On Window machines, substitute C<nmake> for C<make>!
 
-B<Important> if you are upgrading to newer versions, please make sure to remove any files that may be cached by this module!
+B<Important> if you are upgrading to newer versions, please make sure to remove any files that may be cached by this module! To help you do this, run the script B<moby-s-caching.pl>. For information on using B<moby-s-caching.pl>, use the -h option!
 
 =cut
 

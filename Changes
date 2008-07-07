@@ -1,5 +1,58 @@
 Revision history for Perl extension MOBY.
 
+1.05
+
+	- Multiple bug fixes / additions to installer (thanks to Jason Stewart),
+	  as follows: 
+		Additions
+		* detecting root and giving a warning if not root
+		* creating apache file in conf.d/ if running apache2
+		* added apache defaults for debian/ubuntu systems
+		* added a couple longer messages to give people a heads up
+		  what is happening.
+		* changed many/most of the do {...} if pprompt() to 
+		  if (prompt()) {...}
+		* changed the big multi-line messages from multiple 
+		  say "..." to say <<EOT;
+		* re-indented most of the file - the whitespace was messed 
+		  up on Emacs22.
+
+
+		bug fixes
+		* the prompt menu for cloning the DB has a default of 'b' 
+		  in the prompt string, but no default in the actual call to
+		  prompt() so if the user didn't type anything they got an 
+		  ugly error
+		* in prompt_for_directory() switched the cases around for -e
+		  and -w otherwise -e wouldn't get triggered
+		* in config_file_from_template()  added an if defined $fh test
+		* added a chmod 644 to the mobycentral.config because it has
+		  the DB root password
+		* called die() if mysql wasn't detected
+	- fixed a bug in the service_tester.pl script that referenced $opt_c
+	  instead of $url. (thanks to Jason Stewart)
+	- prompt for a username/password for the registry to access the db.
+	  if the user doesnt exist, we add it. This helps us stay away from
+	  using the root password in the mobycentral.config file.
+	- Fixed bug in the service instance cache code. Services from service
+	  providers with other registered services was not updating itself
+	  correctly.
+	- isAlive information is removed from cached rdf because it made 
+	  absolutely no sense keeping it there.
+	- #'s converted to forward slashes so that the URIs are resolvable
+	- fixed a bug in Services.pm that caused the incorrect domain 
+	  name to be placed
+	- file MOBY-Server/t/MOBY.t removed because it was tesing a non-existant
+	  module
+	- fixed the installer script, username/password, root/root was hardcoded
+	- fixed a bug in MOBY::dbConfig that caused certain parameters to be
+	  ignored in the configuration file if a field was empty.
+	- added a caching script to be used by registry providers needing to
+	  update their cache. 
+	  For more information, run: 
+	      moby-s-caching.pl -h
+	  
+
 1.04
 	- fixed bug in MOBY::Client::Central::DUMP that resulted
 	  in an error ('Not an ARRAY reference at 

@@ -12,14 +12,15 @@ secondary_input table in the database
 
 =head1 SYNOPSIS
 
-NON FUNCTIONAL AT THIS TIME
- use MOBY::secondary_input;
- my $Instance = MOBY::secondary_input->new(
-          object_type => "Sequence",
-          namespaces => ["genbank/gi", "genbank/Acc"],
-          article_name => "InputSequenceThingy",
- )
+ NON FUNCTIONAL AT THIS TIME
 
+ use MOBY::secondary_input;
+
+ my $Instance = MOBY::secondary_input->new(
+ 	 object_type => "Sequence",
+	 namespaces => ["genbank/gi", "genbank/Acc"],
+	 article_name => "InputSequenceThingy",
+ );
 
 =cut
 
@@ -42,17 +43,17 @@ Mark Wilkinson (mwilkinson@gene.pbi.nrc.ca)
 	#ATTRIBUTES
 	my %_attr_data =    #     				DEFAULT    	ACCESSIBILITY
 	  (
-		secondary_input_id  => [ undef, 'read/write' ],
-		default_value       => [ undef, 'read/write' ],
-		maximum_value       => [ undef, 'read/write' ],
-		minimum_value       => [ undef, 'read/write' ],
-		enum_value          => [ undef, 'read/write' ],
-		datatype            => [ undef, 'read/write' ],
-		article_name        => [ undef, 'read/write' ],
-		service_instance_id => [ undef, 'read/write' ],
-		service_instance_lsid  => [ undef, 'read/write' ],
-		dbh                 => [ undef, 'read/write' ],
-		description		=> [undef, 'read/write'],
+		secondary_input_id    => [ undef, 'read/write' ],
+		default_value         => [ undef, 'read/write' ],
+		maximum_value         => [ undef, 'read/write' ],
+		minimum_value         => [ undef, 'read/write' ],
+		enum_value            => [ undef, 'read/write' ],
+		datatype              => [ undef, 'read/write' ],
+		article_name          => [ undef, 'read/write' ],
+		service_instance_id   => [ undef, 'read/write' ],
+		service_instance_lsid => [ undef, 'read/write' ],
+		dbh                   => [ undef, 'read/write' ],
+		description           => [ undef, 'read/write' ],
 	  );
 
 	#_____________________________________________________________
@@ -118,15 +119,17 @@ sub WRITE {
 	$CONFIG ||= MOBY::Config->new;    # exported by Config.pm
 	my $adaptor = $CONFIG->getDataAdaptor( datasource => 'mobycentral' );
 	my $dbh = $self->dbh;
-	my $insertid = $adaptor->insert_secondary_input(default_value => $self->default_value,
-							maximum_value => $self->maximum_value,
-							minimum_value => $self->minimum_value,
-							enum_value => $self->enum_value,
-							datatype => $self->datatype,
-							article_name => $self->article_name,
-							service_instance_lsid => $self->service_instance_lsid,
-							description => $self->description);
-	
+	my $insertid = $adaptor->insert_secondary_input(
+						  default_value         => $self->default_value,
+						  maximum_value         => $self->maximum_value,
+						  minimum_value         => $self->minimum_value,
+						  enum_value            => $self->enum_value,
+						  datatype              => $self->datatype,
+						  article_name          => $self->article_name,
+						  service_instance_lsid => $self->service_instance_lsid,
+						  description           => $self->description
+	);
+
 	return $insertid;
 }
 

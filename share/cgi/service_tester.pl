@@ -4,7 +4,7 @@
 # Author: Edward Kawas <edward.kawas@gmail.com>,
 # For copyright and disclaimer see below.
 #
-# $Id: service_tester.pl,v 1.3 2008/05/14 14:01:19 kawas Exp $
+# $Id: service_tester.pl,v 1.5 2008/06/17 16:19:39 kawas Exp $
 #
 # BETA
 #
@@ -87,9 +87,16 @@ my @providers = $central->retrieveServiceProviders();
 foreach my $cat (@CATEGORIES) {
 	foreach my $authURI (@providers) {
 		my ( $second, $minute, $hour, @whatever ) = localtime();
+		$hour = "0$hour" if $hour <= 9;
+		$second = "0$second" if $second <= 9;
+		$minute = "0$minute" if $minute <= 9;
+		
 		print "Finding services registered by '$authURI' as '$cat' @ $hour:$minute:$second\n";
 		my ( $services, $reg ) = $central->findService( Registry => "mobycentral",category => $cat, authURI => $authURI );
 		( $second, $minute, $hour, @whatever ) = localtime();
+		$hour = "0$hour" if $hour <= 9;
+		$second = "0$second" if $second <= 9;
+		$minute = "0$minute" if $minute <= 9;
 		print "Services found "
 	  	. scalar @$services
 	  	. "... processing @ $hour:$minute:$second \n";
@@ -147,7 +154,7 @@ foreach my $cat (@CATEGORIES) {
 				# test cgi services
 				do {
 					 my $ua = LWP::UserAgent->new;
-					 my $req = POST $opt_c, [ data => $input];
+					 my $req = POST $url, [ data => $input];
 					 $req = $ua->request($req);
 					 $out =  $req->content if $req->is_success;
 				} if $cat eq 'cgi';
@@ -179,6 +186,9 @@ foreach my $cat (@CATEGORIES) {
 		# dont proceed until we are completed with the first batch of children!
 		wait, $count-- while $count > 0;
 		( $second, $minute, $hour, @whatever ) = localtime();
+		$hour = "0$hour" if $hour <= 9;
+		$second = "0$second" if $second <= 9;
+		$minute = "0$minute" if $minute <= 9;
 		print "Testing of '$cat' services from '$authURI' completed @ $hour:$minute:$second \n";
 	}
 }
