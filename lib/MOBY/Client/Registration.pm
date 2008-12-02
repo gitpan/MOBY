@@ -1,4 +1,4 @@
-#$Id: Registration.pm,v 1.1 2008/02/21 00:21:27 kawas Exp $
+#$Id: Registration.pm,v 1.2 2008/09/02 13:11:40 kawas Exp $
 
 =head1 NAME
 
@@ -70,6 +70,10 @@ package MOBY::Client::Registration;
 use strict;
 use Carp;
 use vars qw($AUTOLOAD);
+
+use vars qw /$VERSION/;
+$VERSION = sprintf "%d.%02d", q$Revision: 1.2 $ =~ /: (\d+)\.(\d+)/;
+
 {
 
 	#Encapsulated class data

@@ -25,25 +25,6 @@ to install properly, please either try command line cpan or download
 each dependency independently and install them as per their installation
 instructions.
 
-WRSF::Lite
-
-If module 'WSRF::Lite' is not installed and you are
-thinking about developing BioMOBY Asynchronous service, 
-then following is for you!
-
-Unfortunately, this module is not available on CPAN 
-and must be manually installed. Some of the 
-dependencies are beta and as such, may not be stable.
-
-Try downloading it from the following link:
-
-http://www.rcs.manchester.ac.uk/research/projects/wsrflite
-
-or you can try searching the net with Google using the keywords:
-
-	'perl WSRF::Lite' 
-
-
 COPYRIGHT AND LICENCE
 
 Copyright (C) 2003 BioMoby Developers Group (www.biomoby.org)

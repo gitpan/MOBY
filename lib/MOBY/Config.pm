@@ -1,4 +1,4 @@
-#$Id: Config.pm,v 1.4 2008/04/15 00:26:29 mwilkinson Exp $
+#$Id: Config.pm,v 1.5 2008/09/02 13:14:18 kawas Exp $
 
 =head1 NAME
 
@@ -41,6 +41,9 @@ use MOBY::dbConfig;
 use vars qw($AUTOLOAD);
 use Text::Shellwords;
 use vars '$VERSION', '@ISA', '@EXPORT', '$CONFIG';
+
+$VERSION = sprintf "%d.%02d", q$Revision: 1.5 $ =~ /: (\d+)\.(\d+)/;
+
 @ISA    = qw(Exporter);
 @EXPORT = ('$CONFIG');
 {

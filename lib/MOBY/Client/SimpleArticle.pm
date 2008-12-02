@@ -5,6 +5,9 @@ use XML::LibXML;
 use MOBY::MobyXMLConstants;
 use vars qw($AUTOLOAD @ISA);
 
+use vars qw /$VERSION/;
+$VERSION = sprintf "%d.%02d", q$Revision: 1.3 $ =~ /: (\d+)\.(\d+)/;
+
 =head1 NAME
 
 MOBY::Client::SimpleArticle - a small object describing the Simple articles from the findService Response message of MOBY Central

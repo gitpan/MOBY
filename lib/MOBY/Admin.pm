@@ -24,6 +24,9 @@ use MOBY::Config;
 use MOBY::CommonSubs;
 use MOBY::MobyXMLConstants;
 
+use vars qw /$VERSION/;
+$VERSION = sprintf "%d.%02d", q$Revision: 1.2 $ =~ /: (\d+)\.(\d+)/;
+
 sub deregisterService {
 	my ( $self, $xml ) = @_;
 

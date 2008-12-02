@@ -1,4 +1,4 @@
-#$Id: Service.pm,v 1.2 2008/02/21 17:15:40 kawas Exp $
+#$Id: Service.pm,v 1.3 2008/09/02 13:11:40 kawas Exp $
 
 =head1 NAME
 
@@ -48,6 +48,10 @@ use Carp;
 use Cwd;
 use URI::Escape;
 use vars qw($AUTOLOAD @ISA);
+
+use vars qw /$VERSION/;
+$VERSION = sprintf "%d.%02d", q$Revision: 1.3 $ =~ /: (\d+)\.(\d+)/;
+
 my $debug = 0;
 if ( $debug ) {
 	open( OUT, ">/tmp/ServiceCallLogOut.txt" ) || die "cant open logfile\n";

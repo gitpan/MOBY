@@ -13,6 +13,9 @@ use warnings;
 
 use Carp qw(croak);
 
+use vars qw /$VERSION/;
+$VERSION = sprintf "%d.%02d", q$Revision: 1.3 $ =~ /: (\d+)\.(\d+)/;
+
 use MOBY::Client::Exception::MobyExceptionCodes;
 
 
@@ -187,9 +190,12 @@ sub retrieveExceptionResponse {
 
 		# Chek if there is article Name 
 		my ($refElement) = '';
-		if (defined($self->{refElement}) && ($self->{refElement} ne '')) { $refElement = "refElement='".$self->{refElement}."'" ; }
+		if (exists($self->{refElement}) && defined($self->{refElement}) && ($self->{refElement} ne '')) { $refElement = "refElement='".$self->{refElement}."'" ; }
 
-		$exceptionResponse = "<mobyException refQueryID='".$self->{queryID}."' $refElement severity='information'>\n\t<exceptionCode>".$self->{code}."</exceptionCode>\n\t<exceptionMessage>$infoMessage</exceptionMessage>\n</mobyException>";
+		my ($refQueryID) = '';
+		if (exists($self->{queryID}) && defined($self->{queryID}) && ($self->{queryID} ne '')) { $refQueryID = "refQueryID='".$self->{queryID}."'" ; }
+
+		$exceptionResponse = "<mobyException $refQueryID $refElement severity='information'>\n\t<exceptionCode>".$self->{code}."</exceptionCode>\n\t<exceptionMessage>$infoMessage</exceptionMessage>\n</mobyException>";
 
 	} else {
 
@@ -200,8 +206,11 @@ sub retrieveExceptionResponse {
 		croak("code of exception is wrong or does not exists") unless(defined($standardMessage));
 
 		# Chek if there is article Name 
-		my ($refElement) = '';
-		if (defined($self->{refElement}) && ($self->{refElement} ne '')) { $refElement = "refElement='".$self->{refElement}."'" ; }
+                my ($refElement) = '';
+                if (exists($self->{refElement}) && defined($self->{refElement}) && ($self->{refElement} ne '')) { $refElement = "refElement='".$self->{refElement}."'" ; }
+
+                my ($refQueryID) = '';
+                if (exists($self->{queryID}) && defined($self->{queryID}) && ($self->{queryID} ne '')) { $refQueryID = "refQueryID='".$self->{queryID}."'" ; }
 
 		# User could add dynamic message into satandard exception message
 		my ($exceptionMessage) = (defined($self->{message})) ? $standardMessage.$self->{message} : $standardMessage;
@@ -209,11 +218,11 @@ sub retrieveExceptionResponse {
 		if (defined($self->{type}) && ($self->{type} eq 'warning' || $self->{type} eq 'error')) {
 			if ($self->{type} eq 'error') {
 
-				$exceptionResponse = "<mobyException refQueryID='".$self->{queryID}."' $refElement severity='error'>\n\t<exceptionCode>".$self->{code}."</exceptionCode>\n\t<exceptionMessage>$exceptionMessage</exceptionMessage>\n</mobyException>";
+				$exceptionResponse = "<mobyException $refQueryID $refElement severity='error'>\n\t<exceptionCode>".$self->{code}."</exceptionCode>\n\t<exceptionMessage>$exceptionMessage</exceptionMessage>\n</mobyException>";
 
 			} elsif ($self->{type} eq 'warning') {
 
-				$exceptionResponse = "<mobyException refQueryID='".$self->{queryID}."' $refElement severity='warning'>\n\t<exceptionCode>".$self->{code}."</exceptionCode>\n\t<exceptionMessage>$exceptionMessage</exceptionMessage>\n</mobyException>";
+				$exceptionResponse = "<mobyException $refQueryID $refElement severity='warning'>\n\t<exceptionCode>".$self->{code}."</exceptionCode>\n\t<exceptionMessage>$exceptionMessage</exceptionMessage>\n</mobyException>";
 
 			} else {
 				croak("type of exception is wrong or does not exists");

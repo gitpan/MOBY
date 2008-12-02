@@ -3,7 +3,7 @@
 # Author: Edward Kawas <edward.kawas@gmail.com>,
 # For copyright and disclaimer see below.
 #
-# $Id: Namespaces.pm,v 1.5 2008/06/19 21:49:01 kawas Exp $
+# $Id: Namespaces.pm,v 1.7 2008/09/02 13:12:46 kawas Exp $
 #-----------------------------------------------------------------
 
 package MOBY::RDF::Ontologies::Namespaces;
@@ -26,6 +26,9 @@ use MOBY::RDF::Predicates::RDFS;
 
 use MOBY::RDF::Utils;
 use strict;
+
+use vars qw /$VERSION/;
+$VERSION = sprintf "%d.%02d", q$Revision: 1.7 $ =~ /: (\d+)\.(\d+)/;
 
 #-----------------------------------------------------------------
 # load all modules needed for my attributes
@@ -76,8 +79,8 @@ sub new {
 	
 	# save some information retrieved from mobycentral.config
     my $CONF  = MOBY::Config->new;
-	$self->{uri}       = $CONF->{mobynamespace}->{resourceURL} || 'http://biomoby.org/RESOURCES/MOBY-S/Namespaces/';
-	$self->{uri} = $self->{uri} . "/" unless $self->{uri} =~ m/^.*(\/{1})$/;
+	$self->{uri}       = $CONF->{mobynamespace}->{resourceURL} || 'http://biomoby.org/RESOURCES/MOBY-S/Namespaces#';
+	$self->{uri} = $self->{uri} . "#" unless $self->{uri} =~ m/^.*(\#{1})$/;
 
 	$self->{query_all} = <<END;
 SELECT namespace_type, description, namespace_lsid, authority, contact_email FROM namespace ORDER BY namespace_type asc

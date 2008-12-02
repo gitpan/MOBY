@@ -3,7 +3,7 @@
 # Author: Edward Kawas <edward.kawas@gmail.com>,
 # For copyright and disclaimer see below.
 #
-# $Id: Utils.pm,v 1.5 2008/04/30 16:52:25 kawas Exp $
+# $Id: Utils.pm,v 1.8 2008/11/25 18:05:59 kawas Exp $
 #-----------------------------------------------------------------
 
 package MOBY::RDF::Utils;
@@ -13,6 +13,9 @@ use LWP::UserAgent;
 use HTTP::Request;
 
 use strict;
+
+use vars qw /$VERSION/;
+$VERSION = sprintf "%d.%02d", q$Revision: 1.8 $ =~ /: (\d+)\.(\d+)/;
 
 #-----------------------------------------------------------------
 # load all modules needed for my attributes
@@ -127,7 +130,7 @@ returns a scalar of text obtained from the url or dies if there was no success
 sub getHttpRequestByURL {
 	my ( $self, $url ) = @_;
 	my $ua = LWP::UserAgent->new;
-	$ua->agent( "pMOBY/Central/1.0");
+	$ua->agent( "pMOBY/Central/$VERSION");
 
 	my $req =
 	  HTTP::Request->new( GET =>
@@ -167,6 +170,23 @@ sub empty_rdf {
 </rdf:RDF>
 END_OF_RDF
 }
+
+=head2 trim
+
+trims whitespace from the begining and end of a string
+
+=cut
+
+sub trim {
+	my ($self, $text) = @_;
+	$text = $self 
+		unless (ref($self) eq 'Moby::RDF::Utils') and defined($text);
+	$text =~ s/^\s+//;
+	$text =~ s/\s+$//;
+	return $text;
+}
+
+
 
 1;
 __END__

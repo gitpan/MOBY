@@ -4,7 +4,10 @@ my $TMP_DIR   = '/tmp/';#Where your temporary files will be written
 my $XSLTPROC  = '/usr/bin/xsltproc';#Where your xsltproc binary is located
 my $XSL_SHEET = 'xsl/parseMobyMessage.xsl';#Where your xsltproc style-sheet is located
 
-#$Id: MOBYXSLT.pm,v 1.2 2008/02/21 17:15:40 kawas Exp $
+use vars qw /$VERSION/;
+$VERSION = sprintf "%d.%02d", q$Revision: 1.3 $ =~ /: (\d+)\.(\d+)/;
+
+#$Id: MOBYXSLT.pm,v 1.3 2008/09/02 13:14:18 kawas Exp $
 
 =pod
 

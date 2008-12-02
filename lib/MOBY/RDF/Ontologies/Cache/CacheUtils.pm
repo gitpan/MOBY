@@ -4,7 +4,7 @@
 #
 # For copyright and disclaimer see below.
 #
-# $Id: CacheUtils.pm,v 1.2 2008/02/21 17:15:40 kawas Exp $
+# $Id: CacheUtils.pm,v 1.3 2008/09/02 13:12:33 kawas Exp $
 #-----------------------------------------------------------------
 package MOBY::RDF::Ontologies::Cache::CacheUtils;
 
@@ -22,6 +22,9 @@ use constant DATATYPES_CACHE    => 'dataTypes';
 use constant SERVICES_CACHE     => 'services';
 use constant NAMESPACES_CACHE   => 'namespaces';
 use constant SERVICETYPES_CACHE => 'serviceTypes';
+
+use vars qw /$VERSION/;
+$VERSION = sprintf "%d.%02d", q$Revision: 1.3 $ =~ /: (\d+)\.(\d+)/;
 
 =head1 NAME
 

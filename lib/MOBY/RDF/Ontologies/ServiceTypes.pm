@@ -3,7 +3,7 @@
 # Author: Edward Kawas <edward.kawas@gmail.com>,
 # For copyright and disclaimer see below.
 #
-# $Id: ServiceTypes.pm,v 1.3 2008/06/19 21:49:01 kawas Exp $
+# $Id: ServiceTypes.pm,v 1.4 2008/09/02 13:12:46 kawas Exp $
 #-----------------------------------------------------------------
 
 package MOBY::RDF::Ontologies::ServiceTypes;
@@ -26,6 +26,9 @@ use MOBY::RDF::Predicates::RDFS;
 
 use MOBY::RDF::Utils;
 use strict;
+
+use vars qw /$VERSION/;
+$VERSION = sprintf "%d.%02d", q$Revision: 1.4 $ =~ /: (\d+)\.(\d+)/;
 
 #-----------------------------------------------------------------
 # load all modules needed for my attributes

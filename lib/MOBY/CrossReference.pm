@@ -1,9 +1,12 @@
 package MOBY::CrossReference;
 
-#$Id: CrossReference.pm,v 1.2 2008/02/21 17:15:40 kawas Exp $
+#$Id: CrossReference.pm,v 1.3 2008/09/02 13:14:18 kawas Exp $
 use strict;
 use Carp;
 use vars qw($AUTOLOAD @ISA);
+
+use vars qw /$VERSION/;
+$VERSION = sprintf "%d.%02d", q$Revision: 1.3 $ =~ /: (\d+)\.(\d+)/;
 
 =head1 NAME
 

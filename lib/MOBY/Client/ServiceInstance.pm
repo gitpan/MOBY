@@ -2,6 +2,10 @@ package MOBY::Client::ServiceInstance;
 use strict;
 use Carp;
 use vars qw($AUTOLOAD @ISA);
+use MOBY::Client::MobyUnitTest;
+
+use vars qw /$VERSION/;
+$VERSION = sprintf "%d.%02d", q$Revision: 1.3 $ =~ /: (\d+)\.(\d+)/;
 
 =head1 NAME
 
@@ -213,6 +217,15 @@ BioMOBY Project:  http://www.biomoby.org
 
 =cut
 
+=head2 unitTest
+
+ Title     :	unitTest
+ Usage     :	$test = $Service->unitTest()
+ Function  :	get/set the MobyUnitTest for this service
+ Returns   :	a MOBY::Client::MobyUnitTest object for this service 
+
+=cut
+
 {
 
 	# Encapsulated:
@@ -221,23 +234,22 @@ BioMOBY Project:  http://www.biomoby.org
 	#ATTRIBUTES
 	my %_attr_data =    #     				DEFAULT    	ACCESSIBILITY
 	  (
-		authority => [ undef, 'read/write' ],
-		signatureURL => [ undef, 'read/write' ],
-		name      => [ undef, 'read/write' ],
-		type      => [ undef, 'read/write' ],
-		input     => [ undef, 'read/write' ]
-		,               # listref of Simple and Collection articles
-		output => [ undef, 'read/write' ]
-		,               # listref of Simple and Collection articles
-		secondary   => [ undef, 'read/write' ],   # listref of SecondaryArticles
-		category    => [ undef, 'read/write' ],
-		description => [ undef, 'read/write' ],
+		authority     => [ undef, 'read/write' ],
+		signatureURL  => [ undef, 'read/write' ],
+		name          => [ undef, 'read/write' ],
+		type          => [ undef, 'read/write' ],
+		input         => [ undef, 'read/write' ],               # listref of Simple and Collection articles
+		output        => [ undef, 'read/write' ],               # listref of Simple and Collection articles
+		secondary     => [ undef, 'read/write' ],   # listref of SecondaryArticles
+		category      => [ undef, 'read/write' ],
+		description   => [ undef, 'read/write' ],
 		registry      => [ 'MOBY_Central', 'read/write' ],
 		XML           => [ undef,          'read/write' ],
 		authoritative => [ undef,          'read/write' ],
 		URL           => [ undef,          'read/write' ],
 		contactEmail  => [ undef,          'read/write' ],
-		LSID		  => [ undef, 			'read/write']
+		LSID		  => [ undef, 		   'read/write'],
+		unitTest      => [ undef, 		   'read/write'], # a reference to a MobyUnitTest object
 	  );
 
 	#_____________________________________________________________
@@ -279,6 +291,7 @@ sub new {
 	$self->input(     [] ) unless $self->input;
 	$self->output(    [] ) unless $self->output;
 	$self->secondary( [] ) unless $self->secondary;
+	$self->unitTest( new MOBY::Client::MobyUnitTest ) unless $self->unitTest;
 	return $self;
 }
 

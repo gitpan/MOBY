@@ -2,6 +2,10 @@ package MOBY::dbConfig;
 use strict;
 use Carp;
 use vars qw($AUTOLOAD);
+
+use vars qw /$VERSION/;
+$VERSION = sprintf "%d.%02d", q$Revision: 1.3 $ =~ /: (\d+)\.(\d+)/;
+
 use Text::Shellwords;
 {
 

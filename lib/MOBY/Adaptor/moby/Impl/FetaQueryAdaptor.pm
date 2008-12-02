@@ -4,6 +4,9 @@ use vars qw(@ISA);
 use XML::LibXML;
 @ISA = qw{MOBY::Adaptor::moby::DataAdapterI}; # implements the interface
 
+use vars qw /$VERSION/;
+$VERSION = sprintf "%d.%02d", q$Revision: 1.3 $ =~ /: (\d+)\.(\d+)/;
+
 =head1 NAME
 
 MOBY::Adaptor::moby::impl::FetaQueryAdaptor.pm - FetaQueryAdaptor

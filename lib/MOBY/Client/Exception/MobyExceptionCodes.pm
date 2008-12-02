@@ -5,6 +5,9 @@
 # Name of the package
 package MOBY::Client::Exception::MobyExceptionCodes;
 
+use vars qw /$VERSION/;
+$VERSION = sprintf "%d.%02d", q$Revision: 1.3 $ =~ /: (\d+)\.(\d+)/;
+
 use strict;
 
 ##############
@@ -350,11 +353,6 @@ B<Returns:> Description of exception given as input.
 			<td>202</td>
 			<td>INPUT_NOT_ACCEPTED</td>
 			<td>Input data are not accepted</td>
-		</tr>
-		<tr align="left" valign="top" bgcolor="#eeeeee">
-			<td>221</td>
-			<td>INPUT_REQUIRED_PARAMETER</td>
-			<td>Service require parameter X</td>
 		</tr>
 		<tr align="left" valign="top" bgcolor="#eeeeee">
 			<td>221</td>

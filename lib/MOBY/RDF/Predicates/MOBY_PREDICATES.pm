@@ -3,6 +3,8 @@ package MOBY::RDF::Predicates::MOBY_PREDICATES;
 use strict;
 
 BEGIN {
+	use vars qw /$VERSION/;
+	$VERSION = sprintf "%d.%02d", q$Revision: 1.2 $ =~ /: (\d+)\.(\d+)/;
 
 	use constant MOBY_PREDICATES_PREFIX => 'moby';
 

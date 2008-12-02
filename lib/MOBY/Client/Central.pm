@@ -1,4 +1,4 @@
-#$Id: Central.pm,v 1.5 2008/05/14 14:04:03 kawas Exp $
+#$Id: Central.pm,v 1.6 2008/09/02 13:11:40 kawas Exp $
 package MOBY::Client::Central;
 use SOAP::Lite;
 
@@ -14,6 +14,9 @@ use MOBY::Client::CollectionArticle;
 use MOBY::Client::SecondaryArticle;
 use MOBY::Client::OntologyServer;
 use vars qw($AUTOLOAD @ISA $MOBY_server $MOBY_uri);
+
+use vars qw /$VERSION/;
+$VERSION = sprintf "%d.%02d", q$Revision: 1.6 $ =~ /: (\d+)\.(\d+)/;
 
 =head1 NAME
 

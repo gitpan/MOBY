@@ -60,10 +60,11 @@ Perl module wich extends L<MOBY::Async::SimpleServer> class (HelloWorld.pm).
 B<dispatcher.cgi>
 
   #!/usr/bin/perl
-  BEGIN { @INC = ("/path/to/my/libs", @INC); } 
+  use lib "/path/to/my/libs";
   use strict;
   use SOAP::Transport::HTTP;
   use MOBY::Async::WSRF;
+  use MOBY::Async::SimpleServer;
   use HelloWorld;
 
   my $server = new SOAP::Transport::HTTP::CGI;
@@ -73,9 +74,9 @@ B<dispatcher.cgi>
   $server->dispatch_with({
     $WSRF::Constants::MOBY.'#sayHello'        => 'HelloWorld',
     $WSRF::Constants::MOBY.'#sayHello_submit' => 'HelloWorld',
-    $WSRF::Constants::WSRPW.'/GetResourceProperty/GetResourcePropertyRequest' => 'HelloWorld',
-    $WSRF::Constants::WSRPW.'/GetMultipleResourceProperties/GetMultipleResourcePropertiesRequest' => 'HelloWorld',
-    $WSRF::Constants::WSRLW.'/ImmediateResourceTermination/DestroyRequest' => 'HelloWorld',
+    $WSRF::Constants::WSRPW.'/GetResourceProperty/GetResourcePropertyRequest' => 'MOBY::Async::SimpleServer',
+    $WSRF::Constants::WSRPW.'/GetMultipleResourceProperties/GetMultipleResourcePropertiesRequest' => 'MOBY::Async::SimpleServer',
+    $WSRF::Constants::WSRLW.'/ImmediateResourceTermination/DestroyRequest' => 'MOBY::Async::SimpleServer',
   });
   $server->handle();
 

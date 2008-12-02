@@ -3,7 +3,7 @@
 # Author: Edward Kawas <edward.kawas@gmail.com>,
 # For copyright and disclaimer see below.
 #
-# $Id: NamespaceParser.pm,v 1.2 2008/03/05 17:43:11 kawas Exp $
+# $Id: NamespaceParser.pm,v 1.4 2008/11/25 18:05:44 kawas Exp $
 #-----------------------------------------------------------------
 package MOBY::RDF::Parsers::NamespaceParser;
 use strict;
@@ -20,6 +20,9 @@ use MOBY::RDF::Predicates::MOBY_PREDICATES;
 use MOBY::RDF::Predicates::OMG_LSID;
 use MOBY::RDF::Predicates::RDF;
 use MOBY::RDF::Predicates::RDFS;
+
+use vars qw /$VERSION/;
+$VERSION = sprintf "%d.%02d", q$Revision: 1.4 $ =~ /: (\d+)\.(\d+)/;
 
 =head1 NAME
 
@@ -107,8 +110,8 @@ Example:
 sub getNamespaces {
 
 my ($self, $url) = @_;
- 
-return \{} unless $url;
+my %hash;
+return \%hash unless $url;
 
 # download string from url
 my $rdf = undef;
@@ -117,7 +120,7 @@ my $rdf = undef;
 eval {
 	$rdf = MOBY::RDF::Utils->new()->getHttpRequestByURL($url);
 };
-return \{} unless $rdf;
+return \%hash unless $rdf;
 
 # create RDF model and populate
 my $storage = new RDF::Core::Storage::Memory;
@@ -132,7 +135,6 @@ $parser->parse;
 
 # get information from the model
 my $enumerator = $model->getStmts(undef, new RDF::Core::Resource( MOBY::RDF::Predicates::DC_PROTEGE->publisher ), undef);
-my %hash = ();
 my $statement = $enumerator->getFirst;
 while (defined $statement) {
   my $namespace = $statement->getSubject->getLocalValue;

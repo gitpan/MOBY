@@ -3,6 +3,8 @@ package MOBY::RDF::Predicates::DC_PROTEGE;
 use strict;
 
 BEGIN {
+	use vars qw /$VERSION/;
+	$VERSION = sprintf "%d.%02d", q$Revision: 1.2 $ =~ /: (\d+)\.(\d+)/;
 
 	use constant DC_PROTEGE_PREFIX => 'protege-dc';
 

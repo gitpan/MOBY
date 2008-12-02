@@ -1,4 +1,4 @@
-#$Id: Central.pm,v 1.5 2008/05/14 14:06:23 kawas Exp $
+#$Id: Central.pm,v 1.7 2008/09/02 13:14:18 kawas Exp $
 
 =head1 NAME
 
@@ -27,14 +27,11 @@ use URI;
 use LWP;
 use MOBY::CommonSubs;
 
-#use MOBY::RDF::ServiceInstanceRDF;
-#use RDF::Core;
-#use RDF::Core::Model;
-#use RDF::Core::Literal;
-#use RDF::Core::Statement;
-#use RDF::Core::Model::Serializer;
-#use RDF::Core::Storage::Memory;
-#use RDF::Core::Constants qw(:xml :rdf :rdfs);
+use vars qw /$VERSION/;
+$VERSION = sprintf "%d.%02d", q$Revision: 1.7 $ =~ /: (\d+)\.(\d+)/;
+
+use Encode;
+
 use MOBY::MobyXMLConstants;
 my $debug = 0;
 my $listener = 1;
@@ -299,6 +296,14 @@ sub registerObjectClass {
 	{
 		if ( $term =~ /FAILED/ ) { return &_error( "Malformed XML;", "" ); }
 		return &_error("Malformed XML; may be missing required parameters objectType, Description, authURI or contactEmail",
+			""
+		);
+	}
+	#print STDERR "$term, $desc, $auth, $email\n";
+	#check encoding
+	unless ( decode_utf8($term) eq $term && decode_utf8($desc) eq $desc && decode_utf8($auth) eq $auth && decode_utf8($email) eq $email )
+	{
+		return &_error("Invalid character encoding; one or all of objectType, Description, authURI or contactEmail were not UTF-8 encoded.",
 			""
 		);
 	}
@@ -660,6 +665,15 @@ sub registerServiceType {
 			""
 		);
 	}
+	#check character encoding
+	unless ( decode_utf8( $term ) eq $term && decode_utf8( $desc ) eq $desc && decode_utf8( $auth ) eq $auth && decode_utf8( $email ) eq $email )
+	{
+		return &_error(
+"Invalid character encoding\n One of serviceType, Description, authURI or contactEmail were not UTF-8 encoded.",
+			""
+		);
+	}
+
 	return &_error( "Malformed authURI - must not have an http:// prefix", "" )
 	  if $auth =~ '[/:]';
 	return &_error( "Malformed authURI - must take the form NNN.NNN.NNN", "" )
@@ -910,6 +924,7 @@ sub registerNamespace {
 "\n\npayload\n**********************\n$payload\n***********************\n\n"
 	  );
 	my ( $term, $auth, $desc, $email ) = &_registerNamespacePayload($payload);
+
 	$debug && &_LOG("\n\nterm $term\ndesc $desc\nemail $email\nauth $auth");
 	unless ( defined $term && defined $desc && defined $auth && defined $email )
 	{
@@ -918,6 +933,16 @@ sub registerNamespace {
 			""
 		);
 	}
+
+	# check encoding
+	unless ( decode_utf8( $term ) eq $term && decode_utf8( $desc ) eq $desc && decode_utf8( $auth ) eq $auth && decode_utf8( $email ) eq $email )
+	{
+		return &_error(
+"Invalid character encoding; one or all of namespaceType, Description, authURI or contactEmail were not UTF-8 encoded.",
+			""
+		);
+	}
+
 	return &_error( "Malformed authURI - must not have an http:// prefix", "" )
 	  if $auth =~ '[/:]';
 	return &_error( "Malformed authURI - must take the form NNN.NNN.NNN", "" )
@@ -1315,10 +1340,12 @@ sub registerService {
 	$error .= "missing serviceType \n" unless defined $serviceType;
 	$error .= "invalid character string for serviceName.  Must start with a letter followed by [A-Za-z0-9_]\n" if ($serviceName =~ /^[^A-Za-z]/);
 	$error .= "invalid character string for serviceName.  Must start with a letter followed by [A-Za-z0-9_]\n" if ($serviceName =~ /^.+?[^A-Za-z0-9_]/);
-	
+
 	#	$error .="missing signatureURL \n" unless defined $signatureURL;
 	$error .= "missing authURI \n"      unless defined $AuthURI;
+	$error .= "invalid character encoding; authURI not encoded as UTF-8\n" unless decode_utf8( $AuthURI ) eq $AuthURI;
 	$error .= "missing contactEmail \n" unless defined $contactEmail;
+	$error .= "invalid character encoding; contactEmail not encoded as UTF-8\n" unless decode_utf8( $contactEmail ) eq $contactEmail;
 	return &_error( "Malformed authURI - must not have an http:// prefix", "" )
 	  if $AuthURI =~ '[/:]';
 	return &_error( "Malformed authURI - must take the form NNN.NNN.NNN", "" )
@@ -1326,8 +1353,11 @@ sub registerService {
 	return &_error("Malformed email - must be a valid email address of the form name\@organization.foo","")
 	  unless $contactEmail =~ /\S\@\S+\.\S+/;
 	$error .= "missing URL \n"         unless defined $URL;
+	$error .= "invalid character encoding; URL not encoded as UTF-8\n" unless decode_utf8( $URL ) eq $URL;
 	$error .= "missing description \n" unless defined $desc;
+	$error .= "invalid character encoding; description not encoded as UTF-8\n" unless decode_utf8( $desc ) eq $desc;
 	$error .= "missing Category \n"    unless defined $Category;
+	$error .= "invalid character encoding; service name not encoded as UTF-8\n" unless decode_utf8( $serviceName ) eq $serviceName;
 	return &_error( "malformed payload $error\n\n", "" ) if ($error);
 	return &_error(
 		"Category may take the (case sensitive) values 'moby', 'moby-async', 'cgi', 'doc-literal', and 'doc-literal-async', \n",
@@ -1494,11 +1524,15 @@ sub _registerArticles {
 	return (-1,"Invalid articlename name found. Articlenames may not contain spaces or other special characters.") 
 			 if $article =~ /([\+\=:\s\&\<\>\[\]\^\`\{\|\}\~\(\)\\\/\$\#\@\,\|\?\.!\*\;\'\"])/;
 	
+	#check encoding for those articles that are not the empty string or a string of whitespace
+	return (-1,"Invalid character encoding; articlename not UTF-8 encoded.") 
+		 unless decode_utf8( $article ) eq $article;
+
 	$debug && &_LOG("ARTICLENAME in _registerArticle is $article");
 	if (lc($inout) eq "input"){
 	    return (-1, "Input Simples and collections are required to have an articleName as of API version 0.86") if (!$article && !$collid);
 	}
-	
+
 	my ( $object_type, @namespaces );
 	if ( $simp_coll eq "Collection" ) {
 		$debug && &_LOG("Collection!\n");

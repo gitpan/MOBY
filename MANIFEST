@@ -43,6 +43,7 @@ lib/MOBY/Client/Service.pm
 lib/MOBY/Client/ServiceInstance.pm
 lib/MOBY/Client/SimpleArticle.pm
 lib/MOBY/Client/SimpleInput.pm
+lib/MOBY/Client/MobyUnitTest.pm
 lib/MOBY/collection_input.pm
 lib/MOBY/collection_output.pm
 lib/MOBY/CommonSubs.pm
@@ -67,6 +68,7 @@ lib/MOBY/RDF/Ontologies/ServiceTypes.pm
 lib/MOBY/RDF/Parsers/DatatypeParser.pm
 lib/MOBY/RDF/Parsers/NamespaceParser.pm
 lib/MOBY/RDF/Parsers/ServiceTypeParser.pm
+lib/MOBY/RDF/Parsers/ServiceParser.pm
 lib/MOBY/RDF/Predicates/DC_PROTEGE.pm
 lib/MOBY/RDF/Predicates/FETA.pm
 lib/MOBY/RDF/Predicates/MOBY_PREDICATES.pm

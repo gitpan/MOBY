@@ -1,4 +1,4 @@
-#$Id: OntologyServer.pm,v 1.1 2008/02/21 00:21:27 kawas Exp $
+#$Id: OntologyServer.pm,v 1.3 2008/09/02 13:14:18 kawas Exp $
 # this module needs to talk to the 'real' ontology
 # server as well as the MOBY Central database
 # in order to ensure that they are both in sync
@@ -70,6 +70,10 @@ use vars qw($AUTOLOAD);
 use DBI;
 use DBD::mysql;
 use MOBY::Config;
+
+use vars qw /$VERSION/;
+$VERSION = sprintf "%d.%02d", q$Revision: 1.3 $ =~ /: (\d+)\.(\d+)/;
+
 my $debug = 0;
 {
 
@@ -443,7 +447,7 @@ sub deprecateObject {
 #    }
 	my $LSID;
 	unless ( $term =~ /urn\:lsid/ ) { $LSID = $self->getObjectURI($term) } else { $LSID = $term }
-	return ( 0, q{Object type $term cannot be resolved to an LSID}, "" )
+	return ( 0, "Object type $term cannot be resolved to an LSID", "" )
 	  unless $LSID;
 	
 	my $result = $adaptor->query_object(type => $LSID);

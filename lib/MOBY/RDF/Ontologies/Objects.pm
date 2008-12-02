@@ -3,7 +3,7 @@
 # Author: Edward Kawas <edward.kawas@gmail.com>,
 # For copyright and disclaimer see below.
 #
-# $Id: Objects.pm,v 1.4 2008/06/19 21:49:01 kawas Exp $
+# $Id: Objects.pm,v 1.5 2008/09/02 13:12:46 kawas Exp $
 #-----------------------------------------------------------------
 
 package MOBY::RDF::Ontologies::Objects;
@@ -29,6 +29,9 @@ use MOBY::RDF::Utils;
 use MIME::Base64;
 use CGI;
 use strict;
+
+use vars qw /$VERSION/;
+$VERSION = sprintf "%d.%02d", q$Revision: 1.5 $ =~ /: (\d+)\.(\d+)/;
 
 #-----------------------------------------------------------------
 # load all modules needed for my attributes

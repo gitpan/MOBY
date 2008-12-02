@@ -28,12 +28,19 @@ as L<WSRF::Async::SimpleServer>.
 package MOBY::Async::WSRF;
 use strict;
 use WSRF::Lite 0.8.2.2;
+use File::Path;
+
+use vars qw /$VERSION/;
+$VERSION = sprintf "%d.%02d", q$Revision: 1.7 $ =~ /: (\d+)\.(\d+)/;
 
 $WSRF::WSRP::Private{queryIDs} = [];
 $WSRF::WSRP::MobyPrivatePrefixes    = ['pid', 'input'];
 $WSRF::WSRP::MobyPropertiesPrefixes = ['status', 'result'];
 
-$WSRF::Constants::Data  = '/tmp/moby_';
+$WSRF::Constants::DataDir  = (exists($ENV{TMPDIR}) && defined($ENV{TMPDIR}) && $ENV{TMPDIR} ne '')?$ENV{TMPDIR}:'/tmp';
+mkpath($WSRF::Constants::DataDir,1,0777);
+$WSRF::Constants::DataPrefix  = 'moby_';
+$WSRF::Constants::Data = $WSRF::Constants::DataDir .'/'. $WSRF::Constants::DataPrefix;
 $WSRF::Constants::MOBY  = 'http://biomoby.org/';
 $WSRF::Constants::MOBY_MESSAGE_NS  = 'http://www.biomoby.org/moby';
 #$WSRF::Constants::WSA   = 'http://www.w3.org/2005/08/addressing';
@@ -66,7 +73,8 @@ sub std_envelope {
 		'xmlns:wsrl' => $WSRF::Constants::WSRL,
 		'xmlns:wsrp' => $WSRF::Constants::WSRP,
 		'xmlns:wsu'  => $WSRF::Constants::WSU,
-		'xmlns:wsse' => $WSRF::Constants::WSSE
+		'xmlns:wsse' => $WSRF::Constants::WSSE,
+		'xmlns:mobyws' => $WSRF::Constants::MOBY
 	} );
 	
 	
@@ -319,60 +327,9 @@ sub GetMultipleResourceProperties {
 	) ) if (scalar(@notfound));
 	
 	my @resp = $self->SUPER::GetMultipleResourceProperties($envelope);
-	return @resp;   
+	return @resp;
 }
 
-#sub GetMultipleResourcePropertiesRequest {
-#	my $self = shift @_;
-#	my $envelope = pop @_;
-#	my $methodname = (caller(0))[3];
-#	$methodname = substr($methodname,rindex($methodname,':')+1);
-#	eval {
-#		my $parser=XML::LibXML->new();
-#		my $envxml = $parser->parse_string($envelope->raw_xml);
-#		my $context=XML::LibXML::XPathContext->new();
-#		$context->registerNs('s11',$SOAP::Constants::NS_ENV);
-#		$context->registerNs('wsa',$WSRF::Constants::WSA);
-#		my(@actions)=$context->findnodes('/s11:Envelope/s11:Header/wsa:Action[1]',$envxml);
-#		if(scalar(@actions)>0) {
-#			my($action)=$actions[0];
-#			my $acturi = $action->textContent();
-#			my $newacturi= $acturi;
-#			$newacturi =~ s/Request$//;
-#			if( $acturi ne $newacturi) {
-#				foreach my $child ($action->childNodes) {
-#					$action->removeChild($child);
-#				}
-#				$action->appendChild($envxml->createTextNode($newacturi));
-#				
-#				
-#				my(@query)=$context->findnodes("/s11:Envelope/s11:Body/wsa:$methodname".'[1]',$envxml);
-#				if(scalar(@query)>0) {
-#					my($prefix)=$query[0]->prefix();
-#					if(defined($prefix) && $prefix ne '') {
-#						$prefix.=':';
-#					} else {
-#						$prefix='';
-#					}
-#					$methodname =~ s/Request$//;
-#					$query[0]->setNodeName($prefix.$methodname);
-#				}
-#				
-#				# Last, craete new SOM object
-#				my $sparser = WSRF::Deserializer->new();
-#				my($manistring)=$envxml->toString();
-#				$manistring =~ s/[\r\n]+//g;
-#				print STDERR "ENVELOPE ",$manistring,"\n";
-#				$envelope = $sparser->deserialize($manistring);
-#			}
-#		}
-#	};
-#
-#	if($@) {
-#		print STDERR "FALLACANALLA $@\n";
-#	}
-#	return $self->GetMultipleResourceProperties(@_,$envelope);
-#}
 
 #===============================================================================
 # WSRF::FileBasedMobyResourceLifetimes
@@ -513,7 +470,7 @@ my(%URI2ACTION)=(
 	$WSRF::Constants::WSRP => [$WSRF::Constants::WSRPW,undef],
 	$WSRF::Constants::WSRL => [$WSRF::Constants::WSRLW,'ImmediateResourceTermination']
 );
-
+no warnings 'redefine'; 
 sub header {
 	my ($envelope, %args) = @_;
 	my $myHeader;

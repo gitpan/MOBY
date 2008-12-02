@@ -18,8 +18,8 @@ INB GN2 (CNIO, Spain).
 =head1 DESCRIPTION
 
 It provides a class to invoke asynchronous services. Its use is very similar to
-MOBY::Client::Service, but it also provides additional methods in order to
-have more control over the asynchronous service execution.
+MOBY::Client::Service because it is its super-class. It also provides additional
+methods in order to have more control over the asynchronous service execution.
 
 =head1 METHODS
 
@@ -27,7 +27,7 @@ have more control over the asynchronous service execution.
 
  Name       :    new
  Function   :    create a service connection.
- Usage      :    $Service = MOBY::Client::Service->new(@args)
+ Usage      :    $Service = MOBY::Async::Service->new(@args)
  Args       :    service - string with a WSDL defining an asynchronous
                            MOBY service
  Returns    :    MOBY::Async::Service object, undef if no wsdl.
@@ -135,6 +135,13 @@ use MOBY::CommonSubs qw(:all);
 use MOBY::Client::Service;
 use base qw(MOBY::Client::Service);
 
+use vars qw /$VERSION/;
+$VERSION = sprintf "%d.%02d", q$Revision: 1.4 $ =~ /: (\d+)\.(\d+)/;
+
+sub _getPollingTime($$$@);
+sub _getServiceEndpoint($);
+sub _getPseudoRandomPollingTime($$);
+sub _composeResponse(@);
 
 sub new {
 	my ($this, %args) = @_;
@@ -162,7 +169,7 @@ sub execute {
 	my $pollingTime;
 	my ($i, $j) = (0, 1);
 	my @status;
-	while ( $pollingTime = &_getPollingTime($i, $j, $start, @status) ) {
+	while ( $pollingTime = _getPollingTime($i, $j, $start, @status) ) {
 		($i, $j) = ($j, $i+$j);
 		
 		print "(next polling in $pollingTime seconds)\n\n" unless ($self->{silent});
@@ -180,7 +187,7 @@ sub execute {
 	
 	my @responses = $self->result($EPR, @queryIDs);
 	$self->destroy($EPR);
-	my $response = &_composeResponse(@responses);
+	my $response = _composeResponse(@responses);
 	
 	print "Finished.\n\n" unless ($self->{silent});
 	
@@ -239,7 +246,7 @@ sub submit {
 	# Create the resource and submit the batch-call
 	my $func = $self->{serviceName}.'_submit';
 	my $ans = WSRF::Lite
-		-> proxy(&_getServiceEndpoint($self->{service}))
+		-> proxy(_getServiceEndpoint($self->{service}))
 		-> uri($WSRF::Constants::MOBY)
 		-> $func(SOAP::Data->value($data)->type('string'));
 	die "ERROR:  ".$ans->faultstring if ($ans->fault);
@@ -296,7 +303,7 @@ sub enumerated_execute {
 	my $pollingTime;
 	my ($i, $j) = (0, 1);
 	my @status;
-	while ( $pollingTime = &_getPollingTime($i, $j, $start, @status) ) {
+	while ( $pollingTime = _getPollingTime($i, $j, $start, @status) ) {
 		($i, $j) = ($j, $i+$j);
 		
 		print "(next polling in $pollingTime seconds)\n\n" unless ($self->{silent});
@@ -314,7 +321,7 @@ sub enumerated_execute {
 	
 	my @responses = $self->result($EPR, @queryIDs);
 	$self->destroy($EPR);
-	my $response = &_composeResponse(@responses);
+	my $response = _composeResponse(@responses);
 	
 	print "Finished.\n\n" unless ($self->{silent});
 	
@@ -372,7 +379,7 @@ sub enumerated_submit {
 	# Create the resource and submit the batch-call
 	my $func = $self->{serviceName}.'_submit';
 	my $ans = WSRF::Lite
-		-> proxy(&_getServiceEndpoint($self->{service}))
+		-> proxy(_getServiceEndpoint($self->{service}))
 		-> uri($WSRF::Constants::MOBY)
 		-> $func(SOAP::Data->value($data)->type('string'));
 	die "ERROR:  ".$ans->faultstring if ($ans->fault);
@@ -512,7 +519,7 @@ sub destroy {
 	die "ERROR:  ".$ans->faultstring if ($ans->fault);
 }
 
-sub _getServiceEndpoint {
+sub _getServiceEndpoint($) {
 	my ($wsdl) = @_;
 	
 	$wsdl =~ /address location\s*=\s*["|'](.+)["|']/;
@@ -521,10 +528,10 @@ sub _getServiceEndpoint {
 	return $serviceEndpoint;
 }
 
-sub _getPollingTime {
+sub _getPollingTime($$$@) {
 	my ($i, $j, $start, @status) = @_;
 	
-	return &_getPseudoRandomPollingTime($i, $j) unless (scalar(@status));
+	return _getPseudoRandomPollingTime($i, $j) unless (scalar(@status));
 	
 	my $pollingTime = 0;
 	foreach my $status (@status) {
@@ -558,7 +565,7 @@ sub _getPollingTime {
 			          ($status->new_state eq "running") ||
 			          ($status->new_state eq "RUNNING") ) {
 				
-				$pTime = &_getPseudoRandomPollingTime($i, $j);
+				$pTime = _getPseudoRandomPollingTime($i, $j);
 				
 			} else {
 				die "ERROR:  analysis event block not well formed.\n";
@@ -597,7 +604,7 @@ sub _getPollingTime {
 	return $pollingTime;
 }
 
-sub _getPseudoRandomPollingTime {
+sub _getPseudoRandomPollingTime($$) {
 	my ($i, $j) = @_;
 	my $c = 15;
 	my $p = 0.1;
@@ -607,7 +614,7 @@ sub _getPseudoRandomPollingTime {
 	return $delay;
 }
 
-sub _composeResponse {
+sub _composeResponse(@) {
 	my (@datas) = @_;
 	
 	my @authorities;

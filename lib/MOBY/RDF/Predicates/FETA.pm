@@ -4,6 +4,8 @@ use strict;
 use warnings;
 
 BEGIN {
+	use vars qw /$VERSION/;
+	$VERSION = sprintf "%d.%02d", q$Revision: 1.3 $ =~ /: (\d+)\.(\d+)/;
 
 	use constant FETA_PREFIX => 'myGrid';
 
@@ -28,26 +30,20 @@ BEGIN {
 	use constant hasCollectionType  => FETA_URI . 'hasCollectionType';
 	use constant hasDefaultValue    => FETA_URI . 'hasDefaultValue';
 	use constant hasFormat          => FETA_URI . 'hasFormat';
-	use constant hasOrganisationDescriptionText => FETA_URI
-	  . 'hasOrganisationDescriptionText';
-	use constant hasOrganisationNameText => FETA_URI
-	  . 'hasOrganisationNameText';
-	use constant hasParameterDescriptionText => FETA_URI
-	  . 'hasParameterDescriptionText';
+	use constant hasOrganisationDescriptionText => FETA_URI . 'hasOrganisationDescriptionText';
+	use constant hasOrganisationNameText => FETA_URI . 'hasOrganisationNameText';
+	use constant hasParameterDescriptionText => FETA_URI . 'hasParameterDescriptionText';
 	use constant hasParameterNameText      => FETA_URI . 'hasParameterNameText';
 	use constant hasParameterType          => FETA_URI . 'hasParameterType';
 	use constant hasSchemaType             => FETA_URI . 'hasSchemaType';
-	use constant min                      => FETA_URI . 'min';
+	use constant min                       => FETA_URI . 'min';
 	use constant max                       => FETA_URI . 'max';
 	use constant enum                      => FETA_URI . 'enum';
-	use constant hasServiceDescriptionText => FETA_URI
-	  . 'hasServiceDescriptionText';
-	use constant hasServiceNameText => FETA_URI . 'hasServiceNameText';
-	use constant hasServiceDescriptionLocation => FETA_URI
-	  . 'hasServiceDescriptionLocation';
+	use constant hasServiceDescriptionText => FETA_URI . 'hasServiceDescriptionText';
+	use constant hasServiceNameText        => FETA_URI . 'hasServiceNameText';
+	use constant hasServiceDescriptionLocation => FETA_URI . 'hasServiceDescriptionLocation';
 	use constant hasServiceType              => FETA_URI . 'hasServiceType';
-	use constant hasOperationDescriptionText => FETA_URI
-	  . 'hasOperationDescriptionText';
+	use constant hasOperationDescriptionText => FETA_URI . 'hasOperationDescriptionText';
 	use constant hasOperationNameText     => FETA_URI . 'hasOperationNameText';
 	use constant hasTransportType         => FETA_URI . 'hasTransportType';
 	use constant inputParameter           => FETA_URI . 'inputParameter';
@@ -64,8 +60,7 @@ BEGIN {
 	use constant usesResource             => FETA_URI . 'usesResource';
 	use constant operationResource        => FETA_URI . 'operationResource';
 	use constant hasResourceContent       => FETA_URI . 'hasResourceContent';
-	use constant operationResourceContent => FETA_URI
-	  . 'operationResourceContent';
+	use constant operationResourceContent => FETA_URI . 'operationResourceContent';
 	use constant collection          => FETA_URI . 'collection';
 	use constant service             => FETA_URI . 'service';
 	use constant operation           => FETA_URI . 'operation';
@@ -74,6 +69,13 @@ BEGIN {
 	use constant simpleParameter     => FETA_URI . 'simpleParameter';
 	use constant collectionParameter => FETA_URI . 'collectionParameter';
 	use constant secondaryParameter  => FETA_URI . 'secondaryParameter';
+	# unit test predicates
+	use constant hasUnitTest         => FETA_URI . "hasUnitTest";
+	use constant unitTest            => FETA_URI . "unitTest";
+	use constant exampleInput        => FETA_URI . "exampleInput";
+	use constant validOutputXML      => FETA_URI . "validOutputXML";
+	use constant validREGEX          => FETA_URI . "validREGEX";
+	use constant validXPath          => FETA_URI . "validXPath";
 
 }
 1;

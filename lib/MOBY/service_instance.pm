@@ -8,6 +8,9 @@ use MOBY::OntologyServer;
 use MOBY::authority;
 use MOBY::Config;
 
+use vars qw /$VERSION/;
+$VERSION = sprintf "%d.%02d", q$Revision: 1.3 $ =~ /: (\d+)\.(\d+)/;
+
 #@ISA = qw(MOBY::central_db_connection);  # can't do this yet...
 
 =head1 NAME

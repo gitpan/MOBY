@@ -2,7 +2,7 @@
 #
 # Prepare the stage...
 #
-# $Id: moby-s-install.pl,v 1.12 2008/07/02 20:49:23 kawas Exp $
+# $Id: moby-s-install.pl,v 1.14 2008/11/25 19:47:23 kawas Exp $
 # Contact: Edward Kawas <edward.kawas@gmail.com>
 # -----------------------------------------------------------
 
@@ -76,6 +76,7 @@ END_OF_USAGE
 		DBI
 		DBD::mysql
 		LS
+		XML::Simple
 		)
 	  )
 	{
@@ -107,7 +108,6 @@ END_OF_USAGE
 		         Crypt::OpenSSL::RSA
 				 Sys::Hostname::Long
 				 HTTP::Daemon::SSL
-				 XML::CanonicalizeXML
 			   / ) {
 				check_module($module);
 				
@@ -1394,7 +1394,7 @@ EOT
 }
 
 $answer = pprompt(
-"Would you like to auxillary scripts? These include the service pinger, a test page for the rdf agent, an RDF generator page, etc? [y] ",
+"Would you like to auxillary scripts? These include the service pinger, unit tester, a test page for the rdf agent, an RDF generator page, etc? [y] ",
 	-ynd => 'y'
     );
 if ($answer eq 'y') {
@@ -1443,7 +1443,19 @@ if ($answer eq 'y') {
 	    { '#!/usr/bin/perl -w' => "#!$perl_exec", }
 	);
 	say
-'Please don\'t forget to place the service pinger on a cron! TODO - explain how to do that!';
+'Please don\'t forget to place the service pinger on a cron!';
+
+	# copy the service unit tester script
+    file_from_template(
+	    "$service_tester_path/service_unit_tester.pl",
+	    File::ShareDir::dist_file(
+		'MOBY', 'cgi/service_unit_tester.pl'
+	    ),
+	    'MOBY-Central service unit tester script',
+	    { '#!/usr/bin/perl -w' => "#!$perl_exec", }
+	);
+	say
+'Please don\'t forget to place the service unit tester on a cron!';
 
 	#copy the other scripts now
 	file_from_template(

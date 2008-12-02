@@ -3,7 +3,7 @@
 
 	# Define metadata
 	name 'MOBY';
-	version '1.05';
+	version '1.06';
 	license 'perl';
 	abstract
 'This distribution is for communicating with or creating your own MOBY Central registry';
@@ -15,6 +15,7 @@
 	requires 'SOAP::Lite'          => '0.69';
 	requires 'XML::LibXML'         => '1.62';
 	requires 'IO::Stringy'         => '2.110';
+	requires 'File::HomeDir'       => '0.8';
 	requires 'Unicode::String'     => '2.09';
 	requires 'File::ShareDir'      => '0.05';
 	requires 'Template'            => '0';
@@ -26,56 +27,19 @@
 	requires 'LS'                  => '1.1.7';
 	requires 'DBI'                 => '0.01';
 	requires 'DBD::mysql'          => '0.01';
+	# used in MobyUnitTest
+	requires 'XML::Simple'         => '2.18';
+	requires 'XML::SemanticCompare'=> '0';
 
+    # MOBY::Async requires
+	requires 'WSRF::Lite'          => '0.8.2.5';
+	
 	if ( not( $^O =~ /MSWin32|Windows_NT/i ) ) {
 
 		# non portable requires
 		requires 'Want'           => '0';
 		requires 'IO::Prompt'     => '0.99.2';
 		requires 'IPC::Shareable' => '0.6';
-
-		# check for WSRF
-		eval "require WSRF::Lite";
-		if ($@) {
-
-			# WSRF not installed ... tell them where to get it
-			print STDOUT <<'END_OF_TEXT';
-
-################### IMPORTANT ###################
-
-	WSRF lite is not installed on your system.
-	Unfortunately, at this time, this Makefile
-	cannot automatically find and install it for
-	you. You will have to install it manually.
-	
-	The last known URL of where you could find
-	this package is @
-	http://www.rcs.manchester.ac.uk/research/wsrflite
-	
-	If that url does not exist, please search with
-	google using the phrase 'WSRF-Lite'. 
-
-	Sorry for any inconvenience caused!
-
-##################################################
-
-END_OF_TEXT
-
-		}
-
-		# MOBY::Async requires
-		requires 'WSRF::Lite'               => '0.008.2.2';
-		requires 'XML::DOM'                 => '';
-		requires 'DateTime::Format::Epoch'  => '';
-		requires 'DateTime::Format::W3CDTF' => '';
-		requires 'HTTP::Daemon'             => '';
-		requires 'HTTP::Daemon::SSL'        => '';
-		requires 'MIME::Base64'             => '';
-		requires 'Digest::SHA1'             => '';
-		requires 'Crypt::OpenSSL::RSA'      => '';
-		requires 'XML::CanonicalizeXML'     => '0.02';
-		requires 'Sys::Hostname::Long'      => '';
-		requires 'Crypt::OpenSSL::X509'     => '0';
 
 	} else {
 		print STDOUT <<'END_OF_TEXT';
@@ -89,8 +53,7 @@ END_OF_TEXT
 	required libraries.
 	
 	The libraries in question are as follows:
-		IPC::Shareable, IO::Prompt, 
-		WSRF-Lite, & Crypt-OpenSSL-X509.
+		IPC::Shareable, IO::Prompt.
 	
 	Sorry for any inconvenience caused!
 	

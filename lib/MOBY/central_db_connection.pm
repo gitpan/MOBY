@@ -4,6 +4,9 @@ use Carp;
 use vars qw($AUTOLOAD @ISA);
 use MOBY::Config;
 
+use vars qw /$VERSION/;
+$VERSION = sprintf "%d.%02d", q$Revision: 1.3 $ =~ /: (\d+)\.(\d+)/;
+
 =head1 NAME
 
 MOBY::central_db_connection - container object for a specific DB connection

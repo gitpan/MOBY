@@ -4,7 +4,7 @@
 # Author: Edward Kawas <edward.kawas@gmail.com>,
 # For copyright and disclaimer see below.
 #
-# $Id: MobyMetadataResolver.pm,v 1.2 2008/02/21 17:54:56 kawas Exp $
+# $Id: MobyMetadataResolver.pm,v 1.4 2008/11/17 15:27:02 kawas Exp $
 #-----------------------------------------------------------------
 
 package MobyNamespaceType;
@@ -17,6 +17,9 @@ use LS::Service::Response;
 use LS::Service::Fault;
 
 use MOBY::RDF::Ontologies::Namespaces;
+
+use vars qw /$VERSION/;
+$VERSION = sprintf "%d.%02d", q$Revision: 1.4 $ =~ /: (\d+)\.(\d+)/;
 
 use base 'LS::Service::Namespace';
 
@@ -112,13 +115,15 @@ sub getMetadata {
 	  if ( $latest eq "" );
 
 	my $object = $lsid->object();
+	my $uri = MOBY::RDF::Ontologies::Namespaces->new();
+	$uri = $uri->{uri} || "http://biomoby.org/RESOURCES/MOBY-S/Namespaces#$object";
 	my $data   = <<END;
 <?xml version="1.0" encoding="UTF-8"?>
 <rdf:RDF
     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
     xmlns:lsid="http://lsid.omg.org/predicates#"
     xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#">
-     <rdf:Description rdf:about="http://biomoby.org/RESOURCES/MOBY-S/Namespaces#$object">
+     <rdf:Description rdf:about="$uri">
           <rdfs:comment>The Namespace described by the LSID: $lsid has since been modified. Please update your lsid.</rdfs:comment>
           <lsid:latest>$latest</lsid:latest>
      </rdf:Description>
@@ -330,13 +335,15 @@ sub getMetadata {
 	  if ( $latest eq "" );
 
 	my $object = $lsid->object();
+	my $uri = MOBY::RDF::Ontologies::ServiceTypes->new();
+	$uri = $uri->{uri} || "http://biomoby.org/RESOURCES/MOBY-S/Services#$object";
 	my $data   = <<END;
 <?xml version="1.0" encoding="UTF-8"?>
 <rdf:RDF
     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
     xmlns:lsid="http://lsid.omg.org/predicates#"
     xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#">
-     <rdf:Description rdf:about="http://biomoby.org/RESOURCES/MOBY-S/Services#$object">
+     <rdf:Description rdf:about="$uri">
           <rdfs:comment>The ServiceType described by the LSID: $lsid has since been modified. Please update your lsid.</rdfs:comment>
           <lsid:latest>$latest</lsid:latest>
      </rdf:Description>
@@ -546,13 +553,15 @@ sub getMetadata {
 	  if ( $latest eq "" );
 
 	my $object = $lsid->object();
+	my $uri = MOBY::RDF::Ontologies::Objects->new();
+	$uri = $uri->{uri} || "http://biomoby.org/RESOURCES/MOBY-S/Objects#$object";
 	my $data   = <<END;
 <?xml version="1.0" encoding="UTF-8"?>
 <rdf:RDF
     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
     xmlns:lsid="http://lsid.omg.org/predicates#"
     xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#">
-     <rdf:Description rdf:about="http://biomoby.org/RESOURCES/MOBY-S/Objects#$object">
+     <rdf:Description rdf:about="$uri">
           <rdfs:comment>The Datatype described by the LSID: $lsid has since been modified. Please update your lsid.</rdfs:comment>
           <lsid:latest>$latest</lsid:latest>
      </rdf:Description>

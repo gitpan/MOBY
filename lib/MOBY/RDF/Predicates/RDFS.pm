@@ -3,6 +3,8 @@ package MOBY::RDF::Predicates::RDFS;
 use strict;
 
 BEGIN {
+	use vars qw /$VERSION/;
+	$VERSION = sprintf "%d.%02d", q$Revision: 1.2 $ =~ /: (\d+)\.(\d+)/;
 
 	use constant RDFS_PREFIX => 'rdfs';
 

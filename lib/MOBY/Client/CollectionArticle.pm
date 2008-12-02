@@ -6,6 +6,9 @@ use MOBY::MobyXMLConstants;
 use vars qw($AUTOLOAD @ISA);
 use MOBY::Client::SimpleArticle;
 
+use vars qw /$VERSION/;
+$VERSION = sprintf "%d.%02d", q$Revision: 1.4 $ =~ /: (\d+)\.(\d+)/;
+
 =head1 NAME
 
 MOBY::Client::CollectionArticle - a small object describing the
@@ -127,7 +130,7 @@ Mark Wilkinson (markw at illuminae dot com)
 
 =head2 addSimple
 
- Usage     :	$namespaces = $IN->addNamespace($SimpleArticle)
+ Usage     :	$simples = $IN->addSimple($SimpleArticle)
  Function  :	add another SimpleArticle
  Returns   :	arrayref of MOBY::Client::SimpleArticle's or 0 if argument
                 was not a MOBY::Client::SimpleArticle (or other failure)

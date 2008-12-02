@@ -3,7 +3,7 @@
 # Author: Edward Kawas <edward.kawas@gmail.com>,
 # For copyright and disclaimer see below.
 #
-# $Id: ServiceTypeCache.pm,v 1.3 2008/04/30 16:53:45 kawas Exp $
+# $Id: ServiceTypeCache.pm,v 1.4 2008/09/02 13:12:33 kawas Exp $
 #-----------------------------------------------------------------
 
 package MOBY::RDF::Ontologies::Cache::ServiceTypeCache;
@@ -29,6 +29,9 @@ use SOAP::Lite;
 
 use Data::Dumper;
 use strict;
+
+use vars qw /$VERSION/;
+$VERSION = sprintf "%d.%02d", q$Revision: 1.4 $ =~ /: (\d+)\.(\d+)/;
 
 =head1 NAME
 

@@ -4,6 +4,9 @@ use strict;
 use Carp;
 use vars qw($AUTOLOAD @ISA);
 
+use vars qw /$VERSION/;
+$VERSION = sprintf "%d.%02d", q$Revision: 1.3 $ =~ /: (\d+)\.(\d+)/;
+
 =head1 NAME
 
 MOBY::mysql - makes a MYSQL database connection.

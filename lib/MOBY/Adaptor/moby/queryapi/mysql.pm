@@ -7,6 +7,9 @@ use MOBY::Adaptor::moby::queryapi;
 use DBI;
 use DBD::mysql;
 
+use vars qw /$VERSION/;
+$VERSION = sprintf "%d.%02d", q$Revision: 1.2 $ =~ /: (\d+)\.(\d+)/;
+
 @ISA = qw{MOBY::Adaptor::moby::queryapi}; # implements the interface
 
 {

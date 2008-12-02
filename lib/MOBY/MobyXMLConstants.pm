@@ -2,6 +2,8 @@ package MOBY::MobyXMLConstants;
 use strict;
 use vars qw( $VERSION @ISA @EXPORT @NodeNames);
 
+$VERSION = sprintf "%d.%02d", q$Revision: 1.2 $ =~ /: (\d+)\.(\d+)/;
+
 BEGIN {
 	@ISA = qw( Exporter );
 #########################################################

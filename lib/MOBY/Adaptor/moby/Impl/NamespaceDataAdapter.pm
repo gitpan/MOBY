@@ -1,8 +1,10 @@
-#$Id: NamespaceDataAdapter.pm,v 1.2 2008/02/21 17:15:40 kawas Exp $
+#$Id: NamespaceDataAdapter.pm,v 1.3 2008/09/02 13:09:01 kawas Exp $
 package MOBY::Adaptor::moby::Impl::NamespaceDataAdapter;
 use strict;
 use Carp;
 
+use vars qw /$VERSION/;
+$VERSION = sprintf "%d.%02d", q$Revision: 1.3 $ =~ /: (\d+)\.(\d+)/;
 
 =head1 NAME
 

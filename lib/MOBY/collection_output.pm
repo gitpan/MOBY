@@ -5,6 +5,9 @@ use Carp;
 use MOBY::Config;
 use vars qw($AUTOLOAD @ISA);
 
+use vars qw /$VERSION/;
+$VERSION = sprintf "%d.%02d", q$Revision: 1.3 $ =~ /: (\d+)\.(\d+)/;
+
 =head1 NAME
 
 MOBY::collection_output - a lightweight connection to the

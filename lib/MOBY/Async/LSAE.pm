@@ -199,6 +199,9 @@ use strict;
 use XML::LibXML;
 use Exporter;
 
+use vars qw /$VERSION/;
+$VERSION = sprintf "%d.%02d", q$Revision: 1.3 $ =~ /: (\d+)\.(\d+)/;
+
 use base qw(Exporter);
 
 our @EXPORT = qw(

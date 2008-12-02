@@ -1,5 +1,36 @@
 Revision history for Perl extension MOBY.
 
+1.06
+    - Changes to makefile reflecting the cpan addition of wsrf.
+    - Added Boolean to the data sql dump file for initializing
+      a new registry.
+    - Added character encoding checks to the data kept in the
+      registry. All data used in the register* methods are
+      checked to be encoded in UTF-8
+    - Added $VERSION info for all the modules. Sorry if this
+      creates some initial confusion; The longer term gains
+      far exceed any short term disruptions.
+    - Cosmetic fixes in Service.pm and SimpleServer.pm.
+	- Fixed a bug in WSRF.pm related to temporal file location/creation
+	  introduced by a previous commit
+	- Bug fix related to asynchronous MOBY calls with empty mobyData elements. 
+	  MOBY::Async::SimpleServer uses serviceInputParser, which had the bug fixed.
+	- Added "no warnings 'redefine';" to MOBY::Async::WSRF to suppress redefinition
+	  warnings. 
+	- Added Unit test predicates to FETA.pm
+	- Created module that can be used to test Moby services. This module is
+	  MOBY::Client::MobyUnitTest. Methods for determining whether differences
+	  exist are complete. Currently, the method to obtain differences is 
+	  unfinished.
+	- Fixed the uri in the RDF returned in MobyMetadataResolver.pm when
+	  the resolver is attempting to let you know what the latest lsid is
+	  for the given entity.
+	- RDF for service instances now includes unit test information if unit
+	  test information is available for the service instance.
+	- fixed how references were created in MOBY::RDF::Ontologies::*
+	- added a unit testing script for services to the shared/cgi dir.
+    
+
 1.05
 
 	- Multiple bug fixes / additions to installer (thanks to Jason Stewart),

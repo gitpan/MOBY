@@ -4,7 +4,7 @@
 # Author: Edward Kawas <edward.kawas@gmail.com>,
 # For copyright and disclaimer see below.
 #
-# $Id: service_tester.pl,v 1.5 2008/06/17 16:19:39 kawas Exp $
+# $Id: service_tester.pl,v 1.6 2008/11/25 19:37:10 kawas Exp $
 #
 # BETA
 #
@@ -154,6 +154,7 @@ foreach my $cat (@CATEGORIES) {
 				# test cgi services
 				do {
 					 my $ua = LWP::UserAgent->new;
+					 $ua->timeout($TIMEOUT);
 					 my $req = POST $url, [ data => $input];
 					 $req = $ua->request($req);
 					 $out =  $req->content if $req->is_success;

@@ -1,4 +1,4 @@
-#$Id: CommonSubs.pm,v 1.3 2008/03/05 20:27:11 kawas Exp $
+#$Id: CommonSubs.pm,v 1.6 2008/09/22 15:42:27 kawas Exp $
 
 =head1 NAME
 
@@ -239,6 +239,10 @@ use constant BE_NICE    => 1;
 use constant BE_STRICT  => 0;
 our @ISA       = qw(Exporter);
 our @EXPORT    = qw(COLLECTION SIMPLE SECONDARY PARAMETER BE_NICE BE_STRICT);
+
+use vars qw /$VERSION/;
+$VERSION = sprintf "%d.%02d", q$Revision: 1.6 $ =~ /: (\d+)\.(\d+)/;
+
 our %EXPORT_TAGS = (
 	all => [
 		qw(
@@ -375,6 +379,10 @@ sub serviceInputParser {
 	foreach my $query ( @queries ) {
             my $queryID =  _getQID( $query );    # get the queryID attribute of the mobyData
             my @input_articles = _getArticlesAsObjects( $query );
+	    # This is done for empty mobyData. It is a strange case
+	    # but it can happen (a service which is a random answer
+	    # generator, for instance)
+	    $input_parameters{$queryID}={};
             foreach my $article ( @input_articles ) { 
                 ${$input_parameters{$queryID}}{$article->articleName} =  $article;
             }
@@ -1163,7 +1171,7 @@ sub _moby_getAttributeNode {
       . "\n called from line $line";
     return '';
   }
-  return ( $xref->getAttributeNode($attr) || $xref->getAttributeNode( "moby:$attr" ) );
+  return ( $xref->getAttributeNode($attr) || $xref->getAttributeNode( $xref->lookupNamespacePrefix('http://www.biomoby.org/moby') . ":$attr" ) );
 }
 
 sub _moby_getAttribute {
@@ -1183,7 +1191,7 @@ sub _moby_getAttribute {
     . "\n called from line $line";
     return '';
   }
-  return (   $xref->getAttribute($attr) || $xref->getAttribute("moby:$attr") );
+  return (   $xref->getAttribute($attr) || $xref->getAttribute( $xref->lookupNamespacePrefix('http://www.biomoby.org/moby') . ":$attr") );
 }
 
 sub _makeXrefType {

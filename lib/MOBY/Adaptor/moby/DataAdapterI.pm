@@ -1,7 +1,10 @@
-#$Id: DataAdapterI.pm,v 1.1 2008/02/21 00:21:28 kawas Exp $
+#$Id: DataAdapterI.pm,v 1.2 2008/09/02 13:09:30 kawas Exp $
 package MOBY::Adaptor::moby::DataAdapterI;
 use strict;
 use Carp;
+
+use vars qw /$VERSION/;
+$VERSION = sprintf "%d.%02d", q$Revision: 1.2 $ =~ /: (\d+)\.(\d+)/;
 
 =head1 NAME
 
