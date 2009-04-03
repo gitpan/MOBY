@@ -4,7 +4,7 @@ use Carp;
 use vars qw($AUTOLOAD @ISA);
 
 use vars qw /$VERSION/;
-$VERSION = sprintf "%d.%02d", q$Revision: 1.4 $ =~ /: (\d+)\.(\d+)/;
+$VERSION = sprintf "%d.%02d", q$Revision: 1.5 $ =~ /: (\d+)\.(\d+)/;
 
 =head1 NAME
 
@@ -86,7 +86,7 @@ Mark Wilkinson (markw at illuminae dot com)
 	  (
 		articleName => [ undef, 'read/write' ],
 		objectType  => [ undef, 'read/write' ],
-		namespaces => [ [], 'read/write' ],
+		namespaces => [ undef, 'read/write' ],
 	  );
 
 	#_____________________________________________________________

@@ -6,7 +6,7 @@ use warnings;
 use vars qw{$VERSION @ISA @EXPORT @EXPORT_OK};
 # add versioning to this module
 BEGIN {
-	$VERSION = sprintf "%d.%02d", q$Revision: 1.4 $ =~ /: (\d+)\.(\d+)/;
+	$VERSION = sprintf "%d.%02d", q$Revision: 1.5 $ =~ /: (\d+)\.(\d+)/;
 	@ISA       = qw{ Exporter };
 	@EXPORT    = qw{};
 	@EXPORT_OK = qw{}; 
@@ -54,6 +54,8 @@ On *nix machines, install as follows:
 On Window machines, substitute C<nmake> for C<make>!
 
 B<Important> if you are upgrading to newer versions, please make sure to remove any files that may be cached by this module! To help you do this, run the script B<moby-s-caching.pl>. For information on using B<moby-s-caching.pl>, use the -h option!
+
+B<Important II> make sure to run C<moby-s-update-db> with the -h option to see if you need to updgrade the db schemas.
 
 =cut
 

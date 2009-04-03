@@ -3,7 +3,7 @@
 # Author: Edward Kawas <edward.kawas@gmail.com>,
 # For copyright and disclaimer see below.
 #
-# $Id: Services.pm,v 1.9 2008/11/24 14:38:32 kawas Exp $
+# $Id: Services.pm,v 1.11 2009/02/03 18:05:03 kawas Exp $
 #-----------------------------------------------------------------
 
 package MOBY::RDF::Ontologies::Services;
@@ -20,6 +20,8 @@ use Digest::MD5 qw /md5_hex/;
 
 use XML::LibXML;
 
+use LS::ID;
+
 use MOBY::Client::Central;
 use MOBY::Config;
 
@@ -29,14 +31,13 @@ use MOBY::RDF::Predicates::MOBY_PREDICATES;
 use MOBY::RDF::Predicates::OMG_LSID;
 use MOBY::RDF::Predicates::RDF;
 use MOBY::RDF::Predicates::RDFS;
-
 use MOBY::RDF::Utils;
 
 use Data::Dumper;
 use strict;
 
 use vars qw /$VERSION/;
-$VERSION = sprintf "%d.%02d", q$Revision: 1.9 $ =~ /: (\d+)\.(\d+)/;
+$VERSION = sprintf "%d.%02d", q$Revision: 1.11 $ =~ /: (\d+)\.(\d+)/;
 
 #-----------------------------------------------------------------
 # load all modules needed for my attributes
@@ -486,29 +487,44 @@ sub _createRDFModel {
 							 )
 						 )
 		);
+		# add the service type		
 		$model->addStmt(
 				 new RDF::Core::Statement(
 					 $bnode,
 					 $resource->new( MOBY::RDF::Predicates::RDF->type ),
-					 new RDF::Core::Resource( $self->{service_uri} . $SI->type )
+					 new RDF::Core::Resource($self->{service_uri} . $SI->type )
 				 )
 		);
 
 		# add unit test data here ...
-		if ( $SI->unitTest ) {
-			my $unit_test = $SI->unitTest;
-			$bnode =
-			  new RDF::Core::Resource(
-									   $self->{instance_uri},
-									   md5_hex(
-											 "$service_authority/$service_name/"
-											   . MOBY::RDF::Predicates::FETA
-											   ->unitTest
-									   )
-			  );
+		if ( $SI->unitTests ) {
+			my $unitTests = $SI->unitTests;
+			my $utils = new MOBY::RDF::Utils;
+			foreach my $unit_test (@$unitTests) {
+				$bnode =
+				  new RDF::Core::Resource(
+						  $self->{instance_uri},
+						  md5_hex(
+							  "$service_authority/$service_name/"
+								. (
+									  $unit_test->example_input
+									? $utils->trim($unit_test->example_input)
+									: ""
+								)
+								. (
+									  $unit_test->expected_output
+									? $utils->trim($unit_test->expected_output)
+									: ""
+								)
+								. ( $unit_test->regex ? $utils->trim($unit_test->regex) : "" )
+								. ( $unit_test->xpath ? $utils->trim($unit_test->xpath) : "" )
+								."/"
+								. MOBY::RDF::Predicates::FETA->unitTest
+						  )
+				  );
 
-			# add the type
-			$model->addStmt(
+				# add the type
+				$model->addStmt(
 						 new RDF::Core::Statement(
 							 $bnode,
 							 $resource->new( MOBY::RDF::Predicates::RDF->type ),
@@ -516,21 +532,23 @@ sub _createRDFModel {
 										   MOBY::RDF::Predicates::FETA->unitTest
 							 )
 						 )
-			);
+				);
 
-			# add the example input if defined
-			$model->addStmt(
-				new RDF::Core::Statement(
-					$bnode,
-					$resource->new( MOBY::RDF::Predicates::FETA->exampleInput ),
-					new RDF::Core::Literal( $unit_test->example_input )
-				)
-			  )
-			  if $unit_test->example_input
-				  and $unit_test->example_input ne '';
+				# add the example input if defined
+				$model->addStmt(
+						 new RDF::Core::Statement(
+							 $bnode,
+							 $resource->new(
+									   MOBY::RDF::Predicates::FETA->exampleInput
+							 ),
+							 new RDF::Core::Literal( $unit_test->example_input )
+						 )
+				  )
+				  if $unit_test->example_input
+					  and $unit_test->example_input ne '';
 
-			# add the valid output xml if defined
-			$model->addStmt(
+				# add the valid output xml if defined
+				$model->addStmt(
 					   new RDF::Core::Statement(
 						   $bnode,
 						   $resource->new(
@@ -538,39 +556,46 @@ sub _createRDFModel {
 						   ),
 						   new RDF::Core::Literal( $unit_test->expected_output )
 					   )
-			  )
-			  if $unit_test->expected_output
-				  and $unit_test->expected_output ne '';
-
-			# add the valid regex if defined
-			$model->addStmt(
-				  new RDF::Core::Statement(
-					  $bnode,
-					  $resource->new( MOBY::RDF::Predicates::FETA->validREGEX ),
-					  new RDF::Core::Literal( $unit_test->regex )
 				  )
-			  )
-			  if $unit_test->regex
-				  and $unit_test->regex ne '';
+				  if $unit_test->expected_output
+					  and $unit_test->expected_output ne '';
 
-			# add the valid xpath expression if defined
-			$model->addStmt(
-				  new RDF::Core::Statement(
-					  $bnode,
-					  $resource->new( MOBY::RDF::Predicates::FETA->validXPath ),
-					  new RDF::Core::Literal( $unit_test->xpath )
+				# add the valid regex if defined
+				$model->addStmt(
+								 new RDF::Core::Statement(
+									 $bnode,
+									 $resource->new(
+										 MOBY::RDF::Predicates::FETA->validREGEX
+									 ),
+									 new RDF::Core::Literal( $unit_test->regex )
+								 )
 				  )
-			  )
-			  if $unit_test->xpath
-				  and $unit_test->xpath ne '';
+				  if $unit_test->regex
+					  and $unit_test->regex ne '';
 
-			$model->addStmt(
-				new RDF::Core::Statement(
-					$operation,
-					$resource->new( MOBY::RDF::Predicates::FETA->hasUnitTest ),
-					$bnode
-				)
-			);
+				# add the valid xpath expression if defined
+				$model->addStmt(
+								 new RDF::Core::Statement(
+									 $bnode,
+									 $resource->new(
+										 MOBY::RDF::Predicates::FETA->validXPath
+									 ),
+									 new RDF::Core::Literal( $unit_test->xpath )
+								 )
+				  )
+				  if $unit_test->xpath
+					  and $unit_test->xpath ne '';
+
+				$model->addStmt(
+								new RDF::Core::Statement(
+									$operation,
+									$resource->new(
+										MOBY::RDF::Predicates::FETA->hasUnitTest
+									),
+									$bnode
+								)
+				);
+			}
 		}
 
 		my $inputs = $SI->input;
@@ -616,7 +641,7 @@ sub _createRDFModel {
 							 )
 						 )
 				);
-
+							
 				my $oType =
 				  new RDF::Core::Resource(
 					   $self->{instance_uri},
@@ -637,13 +662,16 @@ sub _createRDFModel {
 									 $oType
 								 )
 				);
+								
 				$model->addStmt(
 					new RDF::Core::Statement(
 						$oType,
 						$resource->new( MOBY::RDF::Predicates::RDF->type ),
 						new RDF::Core::Resource(
-										  $self->{datatype_uri} . $_->objectType
-						  )    #TODO check for lsid
+							# check for lsids
+							LS::ID->new($_->objectType) ? 
+								$_->objectType : $self->{datatype_uri} . $_->objectType
+						)
 					)
 				);
 
@@ -712,8 +740,9 @@ sub _createRDFModel {
 							$inNamespaces,
 							$resource->new( MOBY::RDF::Predicates::RDF->type ),
 							new RDF::Core::Resource(
-													 $self->{namespace_uri} . $n
-							  )    #TODO check for lsids
+								LS::ID->new($n) ? 
+									$n : $self->{namespace_uri} . $n
+							  )  # check for lsids
 						)
 					);
 				}
@@ -796,8 +825,9 @@ sub _createRDFModel {
 							$oType,
 							$resource->new( MOBY::RDF::Predicates::RDF->type ),
 							new RDF::Core::Resource(
-									   $self->{datatype_uri} . $simp->objectType
-							  )    #TODO check for lsid
+								LS::ID->new($simp->objectType) ? 
+									$simp->objectType : $self->{datatype_uri} . $simp->objectType	   
+							  )# check for lsids
 						)
 					);
 					my $namespaces = $simp->namespaces;
@@ -844,8 +874,9 @@ sub _createRDFModel {
 												MOBY::RDF::Predicates::RDF->type
 								),
 								new RDF::Core::Resource(
-													 $self->{namespace_uri} . $n
-								  )    #TODO check for lsids
+									LS::ID->new($n) ? 
+										$n : $self->{namespace_uri} . $n
+								  )# check for lsids
 							)
 						);
 					}
@@ -1049,8 +1080,9 @@ sub _createRDFModel {
 						$oType,
 						$resource->new( MOBY::RDF::Predicates::RDF->type ),
 						new RDF::Core::Resource(
-										  $self->{datatype_uri} . $_->objectType
-						  )    #TODO check for lsid
+							LS::ID->new($_->objectType) ? 
+								$_->objectType : $self->{datatype_uri} . $_->objectType
+						  )# check for lsids
 					)
 				);
 
@@ -1119,8 +1151,9 @@ sub _createRDFModel {
 							$inNamespaces,
 							$resource->new( MOBY::RDF::Predicates::RDF->type ),
 							new RDF::Core::Resource(
-													 $self->{namespace_uri} . $n
-							  )    #TODO check for lsids
+								LS::ID->new($n) ? 
+									$n : $self->{namespace_uri} . $n
+							  )# check for lsids
 						)
 					);
 				}
@@ -1203,8 +1236,9 @@ sub _createRDFModel {
 							$oType,
 							$resource->new( MOBY::RDF::Predicates::RDF->type ),
 							new RDF::Core::Resource(
-									   $self->{datatype_uri} . $simp->objectType
-							  )    #TODO check for lsid
+								LS::ID->new($simp->objectType) ? 
+									$simp->objectType : $self->{datatype_uri} . $simp->objectType
+							  )# check for lsids
 						)
 					);
 					my $namespaces = $simp->namespaces;
@@ -1251,8 +1285,9 @@ sub _createRDFModel {
 												MOBY::RDF::Predicates::RDF->type
 								),
 								new RDF::Core::Resource(
-													 $self->{namespace_uri} . $n
-								  )    #TODO check for lsids
+								LS::ID->new($n) ? 
+									$n : $self->{namespace_uri} . $n
+								  )
 							)
 						);
 					}

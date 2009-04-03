@@ -6,7 +6,7 @@ use MOBY::MobyXMLConstants;
 use vars qw($AUTOLOAD @ISA);
 
 use vars qw /$VERSION/;
-$VERSION = sprintf "%d.%02d", q$Revision: 1.3 $ =~ /: (\d+)\.(\d+)/;
+$VERSION = sprintf "%d.%02d", q$Revision: 1.4 $ =~ /: (\d+)\.(\d+)/;
 
 =head1 NAME
 
@@ -195,10 +195,10 @@ Mark Wilkinson (markw at illuminae dot com)
 	#ATTRIBUTES
 	my %_attr_data =    #     				DEFAULT    	ACCESSIBILITY
 	  (
-		articleName => [ undef, 'read/write' ],
-		objectType  => [ undef, 'read/write' ],
-		objectLSID  => [ undef, 'read/write' ],
-		namespaces => [ [], 'read/write' ],
+		articleName  => [ undef, 'read/write' ],
+		objectType   => [ undef, 'read/write' ],
+		objectLSID   => [ undef, 'read/write' ],
+		namespaces   => [ undef, 'read/write' ],
 		id           => [ undef, 'read/write' ],
 		XML_DOM      => [ undef, 'read/write' ],
 		XML          => [ undef, 'read/write' ],

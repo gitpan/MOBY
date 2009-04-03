@@ -1,4 +1,4 @@
-#$Id: Central.pm,v 1.7 2008/09/02 13:14:18 kawas Exp $
+#$Id: Central.pm,v 1.8 2009/03/26 18:41:41 kawas Exp $
 
 =head1 NAME
 
@@ -9,7 +9,7 @@ MOBY::Central.pm - API for communicating with the MOBY Central registry
 package MOBY::Central;
 use strict;
 use Carp;
-use vars qw($AUTOLOAD $WSDL_TEMPLATE $WSDL_POST_TEMPLATE $WSDL_ASYNC_TEMPLATE);
+use vars qw($AUTOLOAD $WSDL_TEMPLATE $WSDL_POST_TEMPLATE $WSDL_ASYNC_TEMPLATE $WSDL_ASYNC_POST_TEMPLATE);
 use XML::LibXML;
 use MOBY::OntologyServer;
 use MOBY::service_type;
@@ -28,7 +28,7 @@ use LWP;
 use MOBY::CommonSubs;
 
 use vars qw /$VERSION/;
-$VERSION = sprintf "%d.%02d", q$Revision: 1.7 $ =~ /: (\d+)\.(\d+)/;
+$VERSION = sprintf "%d.%02d", q$Revision: 1.8 $ =~ /: (\d+)\.(\d+)/;
 
 use Encode;
 
@@ -384,9 +384,34 @@ sub registerObjectClass {
 			}
 		}
 	}
+	# are the article names unique?
+	if ( keys %{$relationships} ) {
+		my $parent_type;
+		my %art_names = ();
+		while ( my ( $reltype, $obj ) = each %{$relationships} ) {
+			# one isa relationship
+			if ($reltype =~ /isa/i) {
+				foreach ( @{$obj} ) {
+					my ( $objectType, $articleName ) = @{$_};
+					$parent_type = $objectType;	
+				}
+			} else {
+				#has/hasa relationship
+				foreach ( @{$obj} ) {
+					my ( $objectType, $articleName ) = @{$_};
+					return return &_error( "Article names for HAS/HASA relationships must be unique. Please ensure that names are unique!", "" )
+					  if $art_names{$articleName};
+					# add name to the hash
+					$art_names{$articleName} = 1;
+				}
+			}
+		}
+		unless (&_extract_terms($parent_type, \%art_names)){
+			return &_error( "Article names for HAS/HASA relationships (including those inherited) must be unique. Please ensure that names are unique!", "" );
+		}
+	}
 
 	# should be good to go now...
-
 
 	( $success, $message, $URI ) = $OntologyServer->createObject(
 		node          => $term,
@@ -433,6 +458,37 @@ sub registerObjectClass {
 		);
 	}
 	return &_success( "Object $term registered successfully.", $URI );
+}
+
+###############################
+#
+###############################
+
+sub _extract_terms {
+
+	my ( $datatype, $articles ) = @_;
+	my $ont_serv = MOBY::OntologyServer->new( ontology => "object" );
+	my $stuff = $ont_serv->retrieveObject( type => $datatype );
+	return 1 unless $stuff;
+
+	# extract all isa/hasa/has relationships
+	my $rels = $stuff->{Relationships} if defined $stuff->{Relationships};
+	for my $relation ( keys %{$rels} ) {
+		for my $term ( @{ $rels->{$relation} } ) {
+
+			# pos 1 has articlename, pos 2 has datatype
+			# if we are in isa, then drill into it
+			if ( $relation =~ m/\:isa$/i ) {
+				return 0 unless &_extract_terms( @{$term}[2], $articles );
+			} else {
+
+				# check if we already processed the articlename ...
+				return 0 if defined @{$term}[1] and $articles->{ @{$term}[1] };
+				$articles->{ @{$term}[1] } = 1 if @{$term}[1];
+			}
+		}
+	}
+	return 1;
 }
 
 #Eddie - converted
@@ -1127,7 +1183,7 @@ sub _deregisterNamespacePayload {
  Input XML :
 
       <registerService>
-         <Category>moby</Category> <!-- one of 'moby', 'moby-async', 'doc-literal', 'doc-literal-async', 'cgi'; 'moby' and 'moby-async' are RPC encoded -->
+         <Category>moby</Category> <!-- one of 'moby', 'moby-async', 'doc-literal', 'doc-literal-async', 'cgi', 'cgi-async'; 'moby' and 'moby-async' are RPC encoded -->
          <serviceName>YourServiceNameHere</serviceName>
          <serviceType>TypeOntologyTerm</serviceType>
          <signatureURL>http://path.to/your/signature/RDF.rdf</sisgnatureURL>
@@ -1360,7 +1416,7 @@ sub registerService {
 	$error .= "invalid character encoding; service name not encoded as UTF-8\n" unless decode_utf8( $serviceName ) eq $serviceName;
 	return &_error( "malformed payload $error\n\n", "" ) if ($error);
 	return &_error(
-		"Category may take the (case sensitive) values 'moby', 'moby-async', 'cgi', 'doc-literal', and 'doc-literal-async', \n",
+		"Category may take the (case sensitive) values 'moby', 'moby-async', 'cgi', 'cgi-async', 'doc-literal', and 'doc-literal-async', \n",
 		""
 	  )
 	  unless (
@@ -1368,6 +1424,7 @@ sub registerService {
 		|| ( $Category eq "moby" )
 		|| ( $Category eq "moby-async" )
 		|| ( $Category eq "cgi" )
+		|| ( $Category eq "cgi-async" )
 	    || ( $Category eq "doc-literal" )
 		|| ( $Category eq "doc-literal-async"));
 
@@ -3314,6 +3371,8 @@ sub _getServiceWSDL {
 	    $wsdl = &_doMobyWSDLReplacement(@_)
 	} elsif ($serviceType eq "moby-async"){
 	    $wsdl = &_doAsyncWSDLReplacement(@_)
+	} elsif ($serviceType eq "cgi-async"){
+	    $wsdl = &_doAsyncPostWSDLReplacement(@_)
 	}
 	return $wsdl;
 }
@@ -3347,6 +3406,35 @@ sub _doAsyncWSDLReplacement {
 	return $wsdl;
 }
 
+sub _doAsyncPostWSDLReplacement {
+	my ( $SI, $InputXML, $OutputXML, $SecondaryXML ) = @_;
+	my $wsdl = $WSDL_ASYNC_POST_TEMPLATE;
+	$wsdl =~ s/^\n//gs;
+	my $serviceName = $SI->servicename;
+	my $AuthURI     = $SI->authority_uri;
+	my $desc        = $SI->description;
+	if ( $desc =~ /<!\[CDATA\[((?>[^\]]+))\]\]>/ ) {
+		$desc = $1;
+	}
+	$desc =~ s"\<"&lt;"g;  # XMl encode now that it is not CDATAd
+	$desc =~ s"\>"&gt;"g;  # XML encode now that it is not CDATAd
+	my $URL    = $SI->url;
+    $URL =~ "(http://[^/]+)(/.*)";
+    my $baseURL = $1;
+	my $relativeURL = $2;
+	my $IN     = "NOT_YET_DEFINED_INPUTS";
+	my $OUT    = "NOT_YET_DEFINED_OUTPUTS";
+	my $INxsd  = &_getInputXSD( $InputXML, $SecondaryXML );
+	my $OUTxsd = &_getOutputXSD($OutputXML);
+	$INxsd  ||= "<NOT_YET_IMPLEMENTED_INPUT_XSD/>";
+	$OUTxsd ||= "<NOT_YET_IMPLEMENTED_OUTPUT_XSD/>";
+	$wsdl =~ s/MOBY__SERVICE__NAME__/$serviceName/g;    # replace all of the goofy portbindingpottype crap
+	$wsdl =~s/\<\!\-\-\s*MOBY__SERVICE__DESCRIPTION\s*\-\-\>/Authority: $AuthURI  -  $desc/g;    # add a sensible description
+	$wsdl =~ s/MOBY__SERVICE__URL/$baseURL/g;    # the URL to the service
+	$wsdl =~ s/MOBY__SERVICE__POST/$relativeURL/g;    # the URL to the service
+	$wsdl =~ s/MOBY__SERVICE__NAME/$serviceName/g;    # finally replace the actual subroutine call
+	return $wsdl;
+}
 
 sub _doPostWSDLReplacement {
 	my ( $SI, $InputXML, $OutputXML, $SecondaryXML ) = @_;
@@ -4162,6 +4250,139 @@ $WSDL_POST_TEMPLATE = <<END2;
 
 END2
 
+$WSDL_ASYNC_POST_TEMPLATE =<<END;
+<?xml version="1.0"?>
+<wsdl:definitions name="MOBY_Central_Generated_WSDL"
+	targetNamespace="http://biomoby.org/Central.wsdl"
+	xmlns:tns="http://biomoby.org/Central.wsdl"
+	xmlns:xsd1="http://biomoby.org/CentralXSDs.xsd"
+	xmlns:xsd="http://www.w3.org/1999/XMLSchema"
+	xmlns="http://schemas.xmlsoap.org/wsdl/"
+	xmlns:http="http://schemas.xmlsoap.org/wsdl/http/"
+	xmlns:mime="http://schemas.xmlsoap.org/wsdl/mime/"
+	xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/"
+	xmlns:p="http://www.w3.org/2001/XMLSchema">
+
+
+	<wsdl:message name="MOBY__SERVICE__NAME__Input">
+		<wsdl:part name="data" type="xsd:string" />
+	</wsdl:message>
+
+	<wsdl:message name="MOBY__SERVICE__NAME__Output">
+		<wsdl:part name="body" type="xsd:string" />
+	</wsdl:message>
+
+	<wsdl:portType name="MOBY__SERVICE__NAME__PortType">
+		<wsdl:operation name="MOBY__SERVICE__NAME">
+			<wsdl:input message="tns:MOBY__SERVICE__NAME__Input" />
+			<wsdl:output message="tns:MOBY__SERVICE__NAME__Output" />
+		</wsdl:operation>
+	</wsdl:portType>
+	<!-- submit -->
+	<wsdl:service name="MOBY__SERVICE__NAME__Service">
+		<wsdl:documentation><!-- MOBY__SERVICE__DESCRIPTION --></wsdl:documentation>
+		<!-- service description goes here -->
+		<wsdl:port name="MOBY__SERVICE__NAME__Port"
+			binding="tns:MOBY__SERVICE__NAME__Binding">
+			<http:address location="MOBY__SERVICE__URL" />
+			<!-- URL to service scriptname -->
+		</wsdl:port>
+	</wsdl:service>
+	<wsdl:binding name="MOBY__SERVICE__NAME__Binding"
+		type="tns:MOBY__SERVICE__NAME__PortType">
+		<http:binding verb="POST" />
+		<wsdl:operation name="MOBY__SERVICE__NAME"><!-- in essense, this is the name of the subroutine that is called -->
+			<http:operation location='MOBY__SERVICE__POST' />
+			<wsdl:input>
+				<mime:content part="MOBY__SERVICE__NAME__Input"
+					type="application/x-www-form-urlencoded" />
+			</wsdl:input>
+			<wsdl:output>
+				<mime:content part="MOBY__SERVICE__NAME__Output"
+					type="text/xml" />
+			</wsdl:output>
+		</wsdl:operation>
+	</wsdl:binding>
+
+	<!-- results -->
+	<wsdl:service name="MOBY__SERVICE__NAME__Service_results">
+		<wsdl:documentation><!-- MOBY__SERVICE__DESCRIPTION --></wsdl:documentation>
+		<!-- service description goes here -->
+		<wsdl:port name="MOBY__SERVICE__NAME__Port_results"
+			binding="tns:MOBY__SERVICE__NAME__Binding_results">
+			<http:address location="MOBY__SERVICE__URL" />
+			<!-- URL to service scriptname -->
+		</wsdl:port>
+	</wsdl:service>
+	<wsdl:binding name="MOBY__SERVICE__NAME__Binding_results"
+		type="tns:MOBY__SERVICE__NAME__PortType">
+		<http:binding verb="POST" />
+		<wsdl:operation name="MOBY__SERVICE__NAME"><!-- in essense, this is the name of the subroutine that is called -->
+			<http:operation location='MOBY__SERVICE__POST' />
+			<wsdl:input>
+				<mime:content part="MOBY__SERVICE__NAME__Input"
+					type="application/x-www-form-urlencoded" />
+			</wsdl:input>
+			<wsdl:output>
+				<mime:content part="MOBY__SERVICE__NAME__Output"
+					type="text/xml" />
+			</wsdl:output>
+		</wsdl:operation>
+	</wsdl:binding>
+	
+	
+	<!-- status -->
+	<wsdl:service name="MOBY__SERVICE__NAME__Service_status">
+		<wsdl:documentation><!-- MOBY__SERVICE__DESCRIPTION --></wsdl:documentation>
+		<!-- service description goes here -->
+		<wsdl:port name="MOBY__SERVICE__NAME__Port_status"
+			binding="tns:MOBY__SERVICE__NAME__Binding_status">
+			<http:address location="MOBY__SERVICE__URL" />
+			<!-- URL to service scriptname -->
+		</wsdl:port>
+	</wsdl:service>
+	<wsdl:binding name="MOBY__SERVICE__NAME__Binding_status"
+		type="tns:MOBY__SERVICE__NAME__PortType">
+		<http:binding verb="POST" />
+		<wsdl:operation name="MOBY__SERVICE__NAME"><!-- in essense, this is the name of the subroutine that is called -->
+			<http:operation location='MOBY__SERVICE__POST' />
+			<wsdl:input>
+				<mime:content part="MOBY__SERVICE__NAME__Input"
+					type="application/x-www-form-urlencoded" />
+			</wsdl:input>
+			<wsdl:output>
+				<mime:content part="MOBY__SERVICE__NAME__Output"
+					type="text/xml" />
+			</wsdl:output>
+		</wsdl:operation>
+	</wsdl:binding>
+	<!-- destroy -->
+	<wsdl:service name="MOBY__SERVICE__NAME__Service_destroy">
+		<wsdl:documentation><!-- MOBY__SERVICE__DESCRIPTION --></wsdl:documentation>
+		<!-- service description goes here -->
+		<wsdl:port name="MOBY__SERVICE__NAME__Port_destroy"
+			binding="tns:MOBY__SERVICE__NAME__Binding_destroy">
+			<http:address location="MOBY__SERVICE__URL" />
+			<!-- URL to service scriptname -->
+		</wsdl:port>
+	</wsdl:service>
+	<wsdl:binding name="MOBY__SERVICE__NAME__Binding_destroy"
+		type="tns:MOBY__SERVICE__NAME__PortType">
+		<http:binding verb="POST" />
+		<wsdl:operation name="MOBY__SERVICE__NAME"><!-- in essense, this is the name of the subroutine that is called -->
+			<http:operation location='MOBY__SERVICE__POST' />
+			<wsdl:input>
+				<mime:content part="MOBY__SERVICE__NAME__Input"
+					type="application/x-www-form-urlencoded" />
+			</wsdl:input>
+			<wsdl:output>
+				<mime:content part="MOBY__SERVICE__NAME__Output"
+					type="text/xml" />
+			</wsdl:output>
+		</wsdl:operation>
+	</wsdl:binding>
+</wsdl:definitions>
+END
 
 # for MOBY Asynchronous services.  This WSDL is not correct YET!
 

@@ -136,7 +136,7 @@ use MOBY::Client::Service;
 use base qw(MOBY::Client::Service);
 
 use vars qw /$VERSION/;
-$VERSION = sprintf "%d.%02d", q$Revision: 1.4 $ =~ /: (\d+)\.(\d+)/;
+$VERSION = sprintf "%d.%02d", q$Revision: 1.5 $ =~ /: (\d+)\.(\d+)/;
 
 sub _getPollingTime($$$@);
 sub _getServiceEndpoint($);
@@ -158,6 +158,46 @@ sub silent {
 	my $self = shift;
 	$self->{silent} = shift;
 	return $self->{silent};
+}
+
+=head2 raw_execute
+
+Calls the service asynchronously with the given scalar XML input. Behaves exactly as C<execute>.
+
+=cut
+
+sub raw_execute {
+	my ($self, $input) = @_;
+	
+	my $start = time;
+	my ($EPR, @queryIDs) = $self->raw_submit($input);
+	
+	my $pollingTime;
+	my ($i, $j) = (0, 1);
+	my @status;
+	while ( $pollingTime = _getPollingTime($i, $j, $start, @status) ) {
+		($i, $j) = ($j, $i+$j);
+		
+		print "(next polling in $pollingTime seconds)\n\n" unless ($self->{silent});
+		
+		sleep $pollingTime;
+		@status = $self->poll($EPR, @queryIDs);
+		
+		unless ($self->{silent}) {
+			foreach my $st (@status) {
+				print $st->XML."\n";
+			}
+			print "\n";
+		}
+	}
+	
+	my @responses = $self->result($EPR, @queryIDs);
+	$self->destroy($EPR);
+	my $response = _composeResponse(@responses);
+	
+	print "Finished.\n\n" unless ($self->{silent});
+	
+	return $response;
 }
 
 sub execute {
@@ -292,6 +332,82 @@ sub submit {
 	
 	# Return Endpoint Reference and the queryIDs
 	return ($EPR, @queryIDs);
+}
+
+sub raw_submit {
+	my ($self, $xml) = @_;
+	
+	print "Creating WS-Resource...\n\n" unless ($self->{silent});
+	
+	my @queryIDs = $self->_get_query_ids($xml);
+	my $data = $xml;
+	
+	# Create the resource and submit the batch-call
+	my $func = $self->{serviceName}.'_submit';
+	my $ans = WSRF::Lite
+		-> proxy(_getServiceEndpoint($self->{service}))
+		-> uri($WSRF::Constants::MOBY)
+		-> $func(SOAP::Data->value($data)->type('string'));
+	die "ERROR:  ".$ans->faultstring if ($ans->fault);
+	
+	# Get address from the returned Endpoint Reference
+	my $address = $ans->match("//{$SOAP::Constants::NS_ENV}Body//{$WSRF::Constants::WSA}Address") ?
+	              $ans->valueof("//{$SOAP::Constants::NS_ENV}Body//{$WSRF::Constants::WSA}Address") :
+	              die "ERROR:  no EndpointReference returned";
+	die "ERROR:  no address into returned EndpointReference" unless ($address);
+	
+	# Get resource identifier from the returned Endpoint Reference
+	my $identifier;
+	if ($ans->dataof("//{$SOAP::Constants::NS_ENV}Body//{$WSRF::Constants::WSA}ReferenceParameters/*")) {
+		foreach my $a ($ans->dataof("//{$SOAP::Constants::NS_ENV}Body//{$WSRF::Constants::WSA}ReferenceParameters/*")) {
+			my $name  = $a->name();
+			my $uri   = $a->uri();
+			my $value = $a->value();
+			if ($name eq "ServiceInvocationId" && $uri eq $WSRF::Constants::MOBY) {
+				$identifier = $value;
+				last;
+			}
+		}
+	}
+	die "ERROR:  no identifier into returned EndpointReference" unless ($identifier);
+	
+	# Compose the Endpoint Reference
+	my $EPR = WSRF::WS_Address->new();
+	$EPR->Address($address);
+	$EPR->ReferenceParameters('<mobyws:ServiceInvocationId xmlns:mobyws="'.$WSRF::Constants::MOBY.'">'.$identifier.'</mobyws:ServiceInvocationId>');
+	
+	print XML::LibXML->new->parse_string($EPR->XML)->getDocumentElement()->toString."\n\n" unless ($self->{silent});
+	
+	$SIG{TERM} = sub {
+		$self->destroy($EPR);
+		print "Finished.\n\n" unless ($self->{silent});
+		exit;
+	};
+	$SIG{INT} = sub {
+		$self->destroy($EPR);
+		print "Finished.\n\n" unless ($self->{silent});
+		exit;
+	};
+	
+	# Return Endpoint Reference and the queryIDs
+	return ($EPR, @queryIDs);
+}
+
+sub _get_query_ids {
+	my ($self, $input) = @_;
+	my @query_ids = ();
+	my $parser    = XML::LibXML->new();
+	my $doc       = $parser->parse_string($input);
+	my $iterator  = $doc->getElementsByLocalName("mobyData");
+	for ( 1 .. $iterator->size() ) {
+		my $node = $iterator->get_node($_);
+		my $id   = $node->getAttribute("queryID")
+		  || $node->getAttribute(
+				 $node->lookupNamespacePrefix($WSRF::Constants::MOBY_MESSAGE_NS)
+				   . ":queryID" );
+		push @query_ids, $id;
+	}
+	return @query_ids;
 }
 
 sub enumerated_execute {

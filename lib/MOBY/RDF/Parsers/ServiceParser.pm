@@ -3,7 +3,7 @@
 # Author: Edward Kawas <edward.kawas@gmail.com>,
 # For copyright and disclaimer see below.
 #
-# $Id: ServiceParser.pm,v 1.3 2008/11/25 18:05:44 kawas Exp $
+# $Id: ServiceParser.pm,v 1.6 2009/02/03 18:05:03 kawas Exp $
 #-----------------------------------------------------------------
 package MOBY::RDF::Parsers::ServiceParser;
 use strict;
@@ -28,8 +28,10 @@ use MOBY::RDF::Predicates::RDF;
 use MOBY::RDF::Predicates::FETA;
 use MOBY::RDF::Predicates::RDFS;
 
+use LS::ID;
+
 use vars qw /$VERSION/;
-$VERSION = sprintf "%d.%02d", q$Revision: 1.3 $ =~ /: (\d+)\.(\d+)/;
+$VERSION = sprintf "%d.%02d", q$Revision: 1.6 $ =~ /: (\d+)\.(\d+)/;
 
 =head1 NAME
 
@@ -346,7 +348,7 @@ sub getServices {
 					  );
 					if ( $$val[0] ) {
 						for my $uri (@$val) {
-							$param->addNamespace( $uri->getURI )
+							$param->addNamespace( $self->_unwrap_namespace( $uri->getURI ) )
 							  if $uri->getURI ne MOBY::RDF::Predicates::FETA
 								  ->parameterNamespace;
 						}
@@ -386,11 +388,12 @@ sub getServices {
 									  )
 				  );
 				if ( $$val[0] ) {
-					$param->objectType( $$val[0]->getURI );
+					$param->objectType( $self->_unwrap_datatype($$val[0]->getURI) );
 				}
 
 				# add the param to the service
 				push @{ $instance->input }, $param;
+				$param = undef;
 			}
 			elsif ( $val eq MOBY::RDF::Predicates::FETA->collectionParameter ) {
 				my $param      = MOBY::Client::SimpleArticle->new();
@@ -416,7 +419,7 @@ sub getServices {
 					  );
 					if ( $$val[0] ) {
 						for my $uri (@$val) {
-							$param->addNamespace( $uri->getURI )
+							$param->addNamespace( $self->_unwrap_namespace( $uri->getURI ) )
 							  if $uri->getURI ne MOBY::RDF::Predicates::FETA
 								  ->parameterNamespace;
 						}
@@ -456,12 +459,13 @@ sub getServices {
 									  )
 				  );
 				if ( $$val[0] ) {
-					$param->objectType( $$val[0]->getURI );
+					$param->objectType( $self->_unwrap_datatype($$val[0]->getURI) );
 				}
 				$collection->addSimple($param);
 
 				# add the param to the service
 				push @{ $instance->input }, $collection;
+				$param = undef;
 			}
 			elsif ( $val eq MOBY::RDF::Predicates::FETA->secondaryParameter ) {
 				my $param = MOBY::Client::SecondaryArticle->new;
@@ -556,6 +560,7 @@ sub getServices {
 
 				# add the secondary to the service
 				push @{ $instance->secondary }, $param;
+				$param = undef;
 			}
 		}
 
@@ -616,7 +621,7 @@ sub getServices {
 					  );
 					if ( $$val[0] ) {
 						for my $uri (@$val) {
-							$param->addNamespace( $uri->getURI )
+							$param->addNamespace( $self->_unwrap_namespace( $uri->getURI ) )
 							  if $uri->getURI ne MOBY::RDF::Predicates::FETA
 								  ->parameterNamespace;
 						}
@@ -656,11 +661,12 @@ sub getServices {
 									  )
 				  );
 				if ( $$val[0] ) {
-					$param->objectType( $$val[0]->getURI );
+					$param->objectType( $self->_unwrap_datatype($$val[0]->getURI) );
 				}
 
 				# add the param to the service
 				push @{ $instance->output }, $param;
+				$param = undef;
 			}
 			elsif ( $val eq MOBY::RDF::Predicates::FETA->collectionParameter ) {
 				my $param      = MOBY::Client::SimpleArticle->new();
@@ -686,12 +692,11 @@ sub getServices {
 					  );
 					if ( $$val[0] ) {
 						for my $uri (@$val) {
-							$param->addNamespace( $uri->getURI )
+							$param->addNamespace( $self->_unwrap_namespace( $uri->getURI ) )
 							  if $uri->getURI ne MOBY::RDF::Predicates::FETA
 								  ->parameterNamespace;
 						}
 					}
-
 				}
 
 				# get the articlename
@@ -726,12 +731,13 @@ sub getServices {
 									  )
 				  );
 				if ( $$val[0] ) {
-					$param->objectType( $$val[0]->getURI );
+					$param->objectType( $self->_unwrap_datatype($$val[0]->getURI) );
 				}
 				$collection->addSimple($param);
 
 				# add the param to the service
 				push @{ $instance->output }, $collection;
+				$param = undef;
 			}
 		}
 
@@ -767,7 +773,7 @@ sub getServices {
 			}
 		}
 		$val = "" if ref($val) eq 'ARRAY';
-		$instance->type( MOBY::RDF::Utils::trim($val) );
+		$instance->type( $self->_unwrap_servicetype ( MOBY::RDF::Utils::trim($val) ) );
 
 		# dont need the performsTask node anymore
 		$performs = undef;
@@ -834,10 +840,9 @@ sub getServices {
 			$unit->xpath( MOBY::RDF::Utils::trim($val) );
 
 			# set the unit test in the service
-			$instance->unitTest($unit);
+			push @{ $instance->unitTests }, $unit;
 
-			# should only be one ... so last;
-			last;
+			#$instance->unitTest($unit);
 		}
 
 		# this service is done ...
@@ -852,6 +857,51 @@ sub getServices {
 	return \@services;
 
 }
+
+sub _unwrap_datatype {
+	my ($self, $uri) = @_;
+	
+	# process the objectType, i.e. check to see if it is an LSID, or uri, etc
+	if ( $uri =~ m/RESOURCES\/MOBY\-S\/Objects(\/[A-Za-z0-9_\-]*)?$/ ) {
+		$uri = substr $1, 1 if $1;
+	} elsif (
+		 $uri =~ m/RESOURCES\/MOBY\-S\/Objects(\#[A-Za-z0-9_\-]*)?$/ ) {
+		$uri = substr $1, 1 if $1;
+	} elsif ( $uri =~ m/^urn\:lsid/i ) {
+		#my $lsid = LS::ID->new( $uri );
+		#$uri =  $lsid->object if $lsid;
+	}
+	return $uri;
+}
+
+sub _unwrap_namespace {
+	my ($self, $n) = @_;
+	# get only the namespace name (strip from lsid or URI)
+	if ($n =~ m/RESOURCES\/MOBY\-S\/Namespaces(\/[A-Za-z0-9_\-]*)?$/) {
+		$n = substr $1, 1 if $1;
+	} elsif ($n =~ m/RESOURCES\/MOBY\-S\/Namespaces(\#[A-Za-z0-9_\-]*)?$/ ){
+		$n = substr $1, 1 if $1;
+	} elsif( $n =~ m/^urn\:lsid/i) {
+		#my $lsid = LS::ID->new($n);
+		#$n = $lsid->object if $lsid;
+	}
+	return $n;
+}
+
+sub _unwrap_servicetype {
+	my ($self, $n) = @_;
+	# get only the servicetype name (strip from lsid or URI)
+	if ($n =~ m/RESOURCES\/MOBY\-S\/Services(\/[A-Za-z0-9_\-]*)?$/) {
+		$n = substr $1, 1 if $1;
+	} elsif ($n =~ m/RESOURCES\/MOBY\-S\/Services(\#[A-Za-z0-9_\-]*)?$/ ){
+		$n = substr $1, 1 if $1;
+	} elsif( $n =~ m/^urn\:lsid/i) {
+		#my $lsid = LS::ID->new($n);
+		#$n = $lsid->object if $lsid;
+	}
+	return $n;
+}
+
 
 1;
 __END__

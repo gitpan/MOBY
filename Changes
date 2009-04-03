@@ -1,5 +1,33 @@
 Revision history for Perl extension MOBY.
 
+1.07
+    - Important: run the script moby-s-update-db once you have installed
+      this module if you have *upgraded* an existing installation.
+      
+	- Fix bug in CollectionArticle, SimpleInput, SecondaryArticle, and 
+	  SimpleArticle that caused objects created to have 'memory'.
+	- Updated the MOBY::Client::ServiceInstance module to reflect
+	  the fact that services can have >= 0 MobyUnitTests.
+	- In MOBY::RDF::Utils, fixed typo in the 
+	  ref ($self)  =~ m// statement
+	- In MOBY::RDF::Ontologies::Services, added a loop to go over
+	  the array of unit tests
+	- MOBY::RDF::Parsers::ServiceParser, added a loop to parse out 
+	  unit tests in those instances that more than one is defined, 
+	  and added code to parse out the datatype/namespace/servicetype 
+	  term from a uri/lsid.
+	- Added the function 'raw_execute' to MOBY::Async::Service to
+	  allow calling of services with raw XML similarly to the method
+	  in MOBY::Client::Service.
+	- Fixed typo in MOBY::Client::Service that refered to POST 
+	  services as category 'post' rather than 'cgi'
+	- updated service_unit_tester.pl to handle cgi/moby/moby-async
+	  services and to take into account that services can have >= 0
+	  unit tests.
+	- fixed bug in Central.pm that allowed you to register datatypes
+	  with similar articlenames to other members in the datatype.
+	- added cgi-async to category of services that registry understands.
+
 1.06
     - Changes to makefile reflecting the cpan addition of wsrf.
     - Added Boolean to the data sql dump file for initializing

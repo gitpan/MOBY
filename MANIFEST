@@ -1,5 +1,6 @@
 bin/scripts/moby-s-install.pl
 bin/scripts/moby-s-caching.pl
+bin/scripts/moby-s-update-db.pl
 Changes
 drop_tables.sql
 inc/Module/AutoInstall.pm
@@ -97,6 +98,7 @@ share/cgi/MOBY-Central.pl
 share/cgi/OntologyServer.cgi
 share/cgi/RESOURCES
 share/cgi/service_tester.pl
+share/cgi/service_unit_tester.pl
 share/cgi/ServicePingerValidator
 share/cgi/ValidateService
 share/config/mobycentral.config.template

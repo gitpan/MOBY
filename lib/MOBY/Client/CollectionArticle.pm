@@ -7,7 +7,7 @@ use vars qw($AUTOLOAD @ISA);
 use MOBY::Client::SimpleArticle;
 
 use vars qw /$VERSION/;
-$VERSION = sprintf "%d.%02d", q$Revision: 1.4 $ =~ /: (\d+)\.(\d+)/;
+$VERSION = sprintf "%d.%02d", q$Revision: 1.5 $ =~ /: (\d+)\.(\d+)/;
 
 =head1 NAME
 
@@ -188,7 +188,7 @@ Mark Wilkinson (markw at illuminae dot com)
 	my %_attr_data =    #   DEFAULT    	ACCESSIBILITY
 	  (
 		articleName =>  [ undef, 'read/write' ],
-		Simples =>      [ [],    'read/write' ],
+		Simples =>      [ undef,    'read/write' ],
 		isSimple     => [ 0,     'read' ],
 		isSecondary  => [ 0,     'read' ],
 		isCollection => [ 1,     'read' ],

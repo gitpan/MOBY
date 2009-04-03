@@ -200,7 +200,7 @@ use XML::LibXML;
 use Exporter;
 
 use vars qw /$VERSION/;
-$VERSION = sprintf "%d.%02d", q$Revision: 1.3 $ =~ /: (\d+)\.(\d+)/;
+$VERSION = sprintf "%d.%02d", q$Revision: 1.4 $ =~ /: (\d+)\.(\d+)/;
 
 use base qw(Exporter);
 
@@ -471,11 +471,14 @@ sub XML {
 	$self->{steps_completed} = $self->steps_completed;
 	$self->{remaining} = $self->remaining;
 	
-	my $id = " id=\"".$self->{id}."\"" if defined $self->{id};
-	my $timestamp = " timestamp=\"".$self->{timestamp}."\"" if defined $self->{timestamp};
+	my $id = "";
+	my $timestamp = "";
+	my $message = "";
+	$id = " id=\"".$self->{id}."\"" if defined $self->{id};
+	$timestamp = " timestamp=\"".$self->{timestamp}."\"" if defined $self->{timestamp};
 	my $header = "<analysis_event$id$timestamp xmlns=''>";
 	my $footer = "</analysis_event>";
-	my $message = "<message>".$self->{message}."</message>" if defined $self->{message};
+	$message = "<message>".$self->{message}."</message>" if defined $self->{message};
 	
 	if ($self->{type} == MOBY::Async::LSAE::LSAE_BASE_EVENT) {
 		

@@ -1,4 +1,4 @@
-#$Id: Service.pm,v 1.3 2008/09/02 13:11:40 kawas Exp $
+#$Id: Service.pm,v 1.4 2009/02/12 19:03:32 kawas Exp $
 
 =head1 NAME
 
@@ -50,7 +50,7 @@ use URI::Escape;
 use vars qw($AUTOLOAD @ISA);
 
 use vars qw /$VERSION/;
-$VERSION = sprintf "%d.%02d", q$Revision: 1.3 $ =~ /: (\d+)\.(\d+)/;
+$VERSION = sprintf "%d.%02d", q$Revision: 1.4 $ =~ /: (\d+)\.(\d+)/;
 
 my $debug = 0;
 if ( $debug ) {
@@ -333,7 +333,7 @@ sub raw_execute {
 		eval { ( $response ) = $self->_soapService->$METHOD( $data ) };
 		if ($@) { die "Service execution failed: $@"}
 		else {return $response;} # the service execution failed then pass back ""
-	} elsif ($self->category eq 'post'){
+	} elsif ($self->category eq 'cgi'){
 		my $response = $self->_executePOSTService(data => $data, method => $METHOD);
 		# currently SOAP::Lite does not execute POST WSDL, so we need to
 		# use LWP or something like that in the executePOSTService method

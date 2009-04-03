@@ -5,7 +5,7 @@ use vars qw($AUTOLOAD @ISA);
 use MOBY::Client::MobyUnitTest;
 
 use vars qw /$VERSION/;
-$VERSION = sprintf "%d.%02d", q$Revision: 1.3 $ =~ /: (\d+)\.(\d+)/;
+$VERSION = sprintf "%d.%02d", q$Revision: 1.5 $ =~ /: (\d+)\.(\d+)/;
 
 =head1 NAME
 
@@ -217,12 +217,12 @@ BioMOBY Project:  http://www.biomoby.org
 
 =cut
 
-=head2 unitTest
+=head2 unitTests
 
- Title     :	unitTest
- Usage     :	$test = $Service->unitTest()
- Function  :	get/set the MobyUnitTest for this service
- Returns   :	a MOBY::Client::MobyUnitTest object for this service 
+ Title     :	unitTests
+ Usage     :	$test = $Service->unitTests()
+ Function  :	get/set the MobyUnitTests for this service
+ Returns   :	a listref of MOBY::Client::MobyUnitTest objects for this service 
 
 =cut
 
@@ -249,7 +249,7 @@ BioMOBY Project:  http://www.biomoby.org
 		URL           => [ undef,          'read/write' ],
 		contactEmail  => [ undef,          'read/write' ],
 		LSID		  => [ undef, 		   'read/write'],
-		unitTest      => [ undef, 		   'read/write'], # a reference to a MobyUnitTest object
+		unitTests      => [ undef, 		   'read/write'], # listref to a MobyUnitTest objects
 	  );
 
 	#_____________________________________________________________
@@ -291,7 +291,7 @@ sub new {
 	$self->input(     [] ) unless $self->input;
 	$self->output(    [] ) unless $self->output;
 	$self->secondary( [] ) unless $self->secondary;
-	$self->unitTest( new MOBY::Client::MobyUnitTest ) unless $self->unitTest;
+	$self->unitTests ( [] ) unless $self->unitTests;
 	return $self;
 }
 

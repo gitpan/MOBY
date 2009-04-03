@@ -3,7 +3,7 @@
 # Author: Edward Kawas <edward.kawas@gmail.com>,
 # For copyright and disclaimer see below.
 #
-# $Id: Utils.pm,v 1.8 2008/11/25 18:05:59 kawas Exp $
+# $Id: Utils.pm,v 1.9 2009/01/28 14:38:41 kawas Exp $
 #-----------------------------------------------------------------
 
 package MOBY::RDF::Utils;
@@ -15,7 +15,7 @@ use HTTP::Request;
 use strict;
 
 use vars qw /$VERSION/;
-$VERSION = sprintf "%d.%02d", q$Revision: 1.8 $ =~ /: (\d+)\.(\d+)/;
+$VERSION = sprintf "%d.%02d", q$Revision: 1.9 $ =~ /: (\d+)\.(\d+)/;
 
 #-----------------------------------------------------------------
 # load all modules needed for my attributes
@@ -180,7 +180,9 @@ trims whitespace from the begining and end of a string
 sub trim {
 	my ($self, $text) = @_;
 	$text = $self 
-		unless (ref($self) eq 'Moby::RDF::Utils') and defined($text);
+		unless ref($self) =~ m/^MOBY::RDF::Utils/;
+	# return empty string if $text is not defined
+	return "" unless $text;
 	$text =~ s/^\s+//;
 	$text =~ s/\s+$//;
 	return $text;

@@ -1,4 +1,4 @@
-#$Id: Central.pm,v 1.6 2008/09/02 13:11:40 kawas Exp $
+#$Id: Central.pm,v 1.8 2009/03/31 21:19:36 kawas Exp $
 package MOBY::Client::Central;
 use SOAP::Lite;
 
@@ -16,7 +16,7 @@ use MOBY::Client::OntologyServer;
 use vars qw($AUTOLOAD @ISA $MOBY_server $MOBY_uri);
 
 use vars qw /$VERSION/;
-$VERSION = sprintf "%d.%02d", q$Revision: 1.6 $ =~ /: (\d+)\.(\d+)/;
+$VERSION = sprintf "%d.%02d", q$Revision: 1.8 $ =~ /: (\d+)\.(\d+)/;
 
 =head1 NAME
 
@@ -643,7 +643,7 @@ sub deregisterNamespace {
      authURI      => $authURI,      
      contactEmail => "your@mail.address",      
      description => $human_readable_description, 
-     category  =>  "moby" | "cgi" | "moby-async"
+     category  =>  "moby" | "cgi-async" | "cgi" | "moby-async" | "doc-literal" | "doc-literal-async"
      URL    =>  $URL_TO_SERVICE  (or URL to WSDL document for wsdl-type services)
 
     input:	listref; (articleName may be undef) 
@@ -741,10 +741,11 @@ sub registerService {
 
 #____________________________________________________________________________________________
 	return $self->errorRegXML(
-"Only 'moby', 'cgi', 'moby-async', 'doc-literal', 'doc-literal-async' Service Categories are currently allowed - you gave me $Category"
+"Only 'moby', 'cgi', 'cgi-async', 'moby-async', 'doc-literal', 'doc-literal-async' Service Categories are currently allowed - you gave me $Category"
 	  )
 	  unless ( ( $Category eq 'moby' )
 			  || ( $Category eq 'moby-async' )
+			  || ( $Category eq 'cgi-async' )
 			  || ( $Category eq 'doc-literal' )
 			  || ( $Category eq 'doc-literal-async' )
 			  || ( $Category eq 'cgi' ));

@@ -3,7 +3,7 @@
 # Author: Edward Kawas <edward.kawas@gmail.com>,
 # For copyright and disclaimer see below.
 #
-# $Id: MobyUnitTest.pm,v 1.4 2008/12/02 18:53:46 kawas Exp $
+# $Id: MobyUnitTest.pm,v 1.5 2009/02/03 21:56:19 kawas Exp $
 #-----------------------------------------------------------------
 
 package MOBY::Client::MobyUnitTest;
@@ -13,7 +13,7 @@ use Carp;
 use XML::SemanticCompare;
 
 use vars qw /$VERSION/;
-$VERSION = sprintf "%d.%02d", q$Revision: 1.4 $ =~ /: (\d+)\.(\d+)/;
+$VERSION = sprintf "%d.%02d", q$Revision: 1.5 $ =~ /: (\d+)\.(\d+)/;
 
 use vars qw($AUTOLOAD);
 
@@ -223,7 +223,7 @@ getter/setter - use to get/set the example input for the service that we are tes
 
 =cut
 
-=head2 example_output 
+=head2 expected_output 
 
 getter/setter - use to get/set the expected output for the service that we are testing given C<example_input>.
 

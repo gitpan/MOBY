@@ -60,7 +60,7 @@ CREATE TABLE secondary_input (
 --
 
 CREATE TABLE service_instance (
-  category enum('moby','soap','wsdl','cgi','moby-async') default NULL,
+  category enum('moby','soap','wsdl','cgi','moby-async', 'cgi-async', 'doc-literal', 'doc-literal-async') default NULL,
   servicename varchar(255) NOT NULL default '',
   service_type_uri varchar(255) NOT NULL default '',
   authority_id int(10) unsigned NOT NULL default '0',
