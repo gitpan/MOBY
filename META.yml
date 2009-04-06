@@ -41,14 +41,7 @@ requires:
   XML::DOM: 0
   XML::LibXML: 1.62
   XML::XPath: 1.12
-<<<<<<< META.yml
-  WSRF-Lite: 0.8.2.5
-  XML::Simple: 2.18
-  XML::SemanticCompare: .91
-version: 1.06
-=======
   XML::SemanticCompare: 0
   XML::Simple: 2.18
   WSRF::Lite: 0.8.2.5
-version: 1.07
->>>>>>> 1.6
+version: 1.08

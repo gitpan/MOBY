@@ -1,5 +1,8 @@
 Revision history for Perl extension MOBY.
 
+1.08
+    - Fixed META.yml in the distribution. Please refer to changes for 1.07.
+
 1.07
     - Important: run the script moby-s-update-db once you have installed
       this module if you have *upgraded* an existing installation.
