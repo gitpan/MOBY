@@ -218,6 +218,94 @@ ok( !$r->success, "Object registration correctly failed" )
 $r = $C->deregisterObjectClass( objectType => "Rubbish_Art" );
 
 
+# confirm that we cannot register a datatype with odd characters in its name
+$r = $C->registerObjectClass(
+	(
+	   objectType    => "Rubbish_'Art",
+	   description   => "a human-readable description of the object",
+	   contactEmail  => 'your@email.address',
+	   authURI       => "test.suite.com",
+	   Relationships => {
+						  ISA => [
+								   {
+									 object      => 'Object',
+									 articleName => 'article1'
+								   }
+						  ],
+						  HASA => [
+									{
+									  object      => 'Object',
+									  articleName => 'articleName3'
+									},
+						  ]
+	   }
+	)
+);
+ok( !$r->success, "Object registration correctly failed" )
+  or diag(
+	"Shouldn't be possible to register Object with an invalid character in its name!"
+	  . $r->message );
+$r = $C->deregisterObjectClass( objectType => "Rubbish_'Art" );
+
+# confirm that we cannot register a datatype with odd characters in its name
+$r = $C->registerObjectClass(
+	(
+	   objectType    => "Rubbish_\"Art",
+	   description   => "a human-readable description of the object",
+	   contactEmail  => 'your@email.address',
+	   authURI       => "test.suite.com",
+	   Relationships => {
+						  ISA => [
+								   {
+									 object      => 'Object',
+									 articleName => 'article1'
+								   }
+						  ],
+						  HASA => [
+									{
+									  object      => 'Object',
+									  articleName => 'articleName3'
+									},
+						  ]
+	   }
+	)
+);
+ok( !$r->success, "Object registration correctly failed" )
+  or diag(
+	"Shouldn't be possible to register Object with an invalid character in its name!"
+	  . $r->message );
+$r = $C->deregisterObjectClass( objectType => "Rubbish_\"Art" );
+
+# confirm that we cannot register a datatype with odd characters in its name
+$r = $C->registerObjectClass(
+	(
+	   objectType    => "Rubbish_/Art",
+	   description   => "a human-readable description of the object",
+	   contactEmail  => 'your@email.address',
+	   authURI       => "test.suite.com",
+	   Relationships => {
+						  ISA => [
+								   {
+									 object      => 'Object',
+									 articleName => 'article1'
+								   }
+						  ],
+						  HASA => [
+									{
+									  object      => 'Object',
+									  articleName => 'articleName3'
+									},
+						  ]
+	   }
+	)
+);
+ok( !$r->success, "Object registration correctly failed" )
+  or diag(
+	"Shouldn't be possible to register Object with an invalid character in its name!"
+	  . $r->message );
+$r = $C->deregisterObjectClass( objectType => "Rubbish_/Art" );
+
+
 ##############     NAMESPACE REGISTRATION     ##############
 # Register a new namespace
 my %Namespace = (

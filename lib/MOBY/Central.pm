@@ -1,4 +1,4 @@
-#$Id: Central.pm,v 1.8 2009/03/26 18:41:41 kawas Exp $
+#$Id: Central.pm,v 1.9 2009/04/08 14:51:50 kawas Exp $
 
 =head1 NAME
 
@@ -28,7 +28,7 @@ use LWP;
 use MOBY::CommonSubs;
 
 use vars qw /$VERSION/;
-$VERSION = sprintf "%d.%02d", q$Revision: 1.8 $ =~ /: (\d+)\.(\d+)/;
+$VERSION = sprintf "%d.%02d", q$Revision: 1.9 $ =~ /: (\d+)\.(\d+)/;
 
 use Encode;
 
@@ -318,7 +318,7 @@ sub registerObjectClass {
 	return &_error("Object name may not contain spaces or other characters invalid in a URN",
 		""
 	  )
-	  if $term =~ /\s\"\&\<\>\[\]\^\`\{\|\}\~/;
+	  if $term =~ /[\/\'\\\s\"\&\<\>\[\]\^\`\{\|\}\~]/;
 	if ( $term =~ m"^(([^:/?#]+):)?(//([^/?#]*))?([^?#]*)(\?([^#]*))?(#(.*))?" )
 	{    # matches a URI
 		return &_error( "Object name may not be an URN or URI", "" ) if $1;
