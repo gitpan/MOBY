@@ -3,7 +3,7 @@
 
 	# Define metadata
 	name 'MOBY';
-	version '1.09';
+	version '1.11';
 	license 'perl';
 	abstract
 'This distribution is for communicating with or creating your own MOBY Central registry';
@@ -13,6 +13,7 @@
 	requires 'Carp'                => '0';
 	requires 'File::Spec'          => '0.80';
 	requires 'SOAP::Lite'          => '0.69';
+	requires 'XML::LibXML::Common' => '0.13';
 	requires 'XML::LibXML'         => '1.62';
 	requires 'IO::Stringy'         => '2.110';
 	requires 'File::HomeDir'       => '0.8';

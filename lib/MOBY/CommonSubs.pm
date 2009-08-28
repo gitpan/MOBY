@@ -1,4 +1,4 @@
-#$Id: CommonSubs.pm,v 1.6 2008/09/22 15:42:27 kawas Exp $
+#$Id: CommonSubs.pm,v 1.7 2009/04/15 17:45:23 kawas Exp $
 
 =head1 NAME
 
@@ -241,7 +241,7 @@ our @ISA       = qw(Exporter);
 our @EXPORT    = qw(COLLECTION SIMPLE SECONDARY PARAMETER BE_NICE BE_STRICT);
 
 use vars qw /$VERSION/;
-$VERSION = sprintf "%d.%02d", q$Revision: 1.6 $ =~ /: (\d+)\.(\d+)/;
+$VERSION = sprintf "%d.%02d", q$Revision: 1.7 $ =~ /: (\d+)\.(\d+)/;
 
 our %EXPORT_TAGS = (
 	all => [
@@ -1171,7 +1171,17 @@ sub _moby_getAttributeNode {
       . "\n called from line $line";
     return '';
   }
-  return ( $xref->getAttributeNode($attr) || $xref->getAttributeNode( $xref->lookupNamespacePrefix('http://www.biomoby.org/moby') . ":$attr" ) );
+  # check for just the attribute by name
+  return $xref->getAttributeNode($attr)
+    if $xref->getAttributeNode($attr);
+  # check for a namespaced attribute by name
+  return $xref->getAttributeNodeNS('http://www.biomoby.org/moby', $attr)
+  	if $xref->getAttributeNodeNS('http://www.biomoby.org/moby', $attr);
+  # check for a namespaced attribute with a prefix ... this is probably redundant!
+  return $xref->getAttributeNode( $xref->lookupNamespacePrefix('http://www.biomoby.org/moby') . ":$attr") 
+  	if $xref->lookupNamespacePrefix('http://www.biomoby.org/moby');
+  # cant find it ...
+  return '';
 }
 
 sub _moby_getAttribute {
@@ -1191,7 +1201,18 @@ sub _moby_getAttribute {
     . "\n called from line $line";
     return '';
   }
-  return (   $xref->getAttribute($attr) || $xref->getAttribute( $xref->lookupNamespacePrefix('http://www.biomoby.org/moby') . ":$attr") );
+  
+  # check for just the attribute by name
+  return $xref->getAttribute($attr)
+    if $xref->getAttribute($attr);
+  # check for a namespaced attribute by name
+  return $xref->getAttributeNS('http://www.biomoby.org/moby', $attr)
+  	if $xref->getAttributeNS('http://www.biomoby.org/moby', $attr);
+  # check for a namespaced attribute with a prefix ... this is probably redundant!
+  return $xref->getAttribute( $xref->lookupNamespacePrefix('http://www.biomoby.org/moby') . ":$attr") 
+  	if $xref->lookupNamespacePrefix('http://www.biomoby.org/moby');
+  # cant find it ...
+  return '';
 }
 
 sub _makeXrefType {

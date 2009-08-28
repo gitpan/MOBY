@@ -1,5 +1,23 @@
 Revision history for Perl extension MOBY.
 
+
+1.11
+	-  Updated the Makefile.PL to handle some missing dependencies.
+       Changes
+	  *   Updated the RESOURCES script to better handle trailing slashes
+	      on Objects/, Namespaces, Services/
+	  *  Updated the regex expressions that are applied against terms
+	      when registering new nodes in the biomoby ontologies. 
+
+1.10
+    - Added a RESTful WSDL page to the installation. Basically, you do
+      a GET on BioMobyWSDL/authURI/servicename/ and a WSDL for that service
+      is returned. 
+      ** Thanks to José Manuel Rodríguez Carrasco ** 
+    - Updated _moby_getAttribute and _moby_getAttributeNode so that the
+      warning regarding unitialized value is no longer given when running
+      t/CommonSubs.t or using CommonSubs.pm.
+
 1.09
     - Fixed bug where data types registered into registry could contain
       illegal characters.

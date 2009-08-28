@@ -1,4 +1,4 @@
-#$Id: Central.pm,v 1.9 2009/04/08 14:51:50 kawas Exp $
+#$Id: Central.pm,v 1.12 2009/08/28 14:40:44 kawas Exp $
 
 =head1 NAME
 
@@ -28,7 +28,7 @@ use LWP;
 use MOBY::CommonSubs;
 
 use vars qw /$VERSION/;
-$VERSION = sprintf "%d.%02d", q$Revision: 1.9 $ =~ /: (\d+)\.(\d+)/;
+$VERSION = sprintf "%d.%02d", q$Revision: 1.12 $ =~ /: (\d+)\.(\d+)/;
 
 use Encode;
 
@@ -318,7 +318,7 @@ sub registerObjectClass {
 	return &_error("Object name may not contain spaces or other characters invalid in a URN",
 		""
 	  )
-	  if $term =~ /[\/\'\\\s\"\&\<\>\[\]\^\`\{\|\}\~]/;
+	  if $term =~ /[\/\'\\\s"\&\<\>\[\]\^\`\{\|\}\~%\!\@#\$\*\+=]/;
 	if ( $term =~ m"^(([^:/?#]+):)?(//([^/?#]*))?([^?#]*)(\?([^#]*))?(#(.*))?" )
 	{    # matches a URI
 		return &_error( "Object name may not be an URN or URI", "" ) if $1;
@@ -739,6 +739,10 @@ sub registerServiceType {
 		""
 	  )
 	  unless $email =~ /\S\@\S+\.\S+/;
+	 return &_error("serviceType name may not contain spaces or other characters invalid in a URN",
+		""
+	  )
+	  if $term =~ /[\/\'\\\s"\&\<\>\[\]\^\`\{\|\}\~%\!\@#\$\*\+=]/;
 
 	# validate that the final ontology will be valid
 	my ( $exists, $exists_message, $existingURI ) =
@@ -999,6 +1003,10 @@ sub registerNamespace {
 		);
 	}
 
+	return &_error("Namespace name may not contain spaces or other characters invalid in a URN",
+		""
+	)
+	  if $term =~ /[\/\'\\\s"\&\<\>\[\]\^\`\{\|\}\~%\!\@#\$\*\+=]/;
 	return &_error( "Malformed authURI - must not have an http:// prefix", "" )
 	  if $auth =~ '[/:]';
 	return &_error( "Malformed authURI - must take the form NNN.NNN.NNN", "" )
@@ -1396,6 +1404,7 @@ sub registerService {
 	$error .= "missing serviceType \n" unless defined $serviceType;
 	$error .= "invalid character string for serviceName.  Must start with a letter followed by [A-Za-z0-9_]\n" if ($serviceName =~ /^[^A-Za-z]/);
 	$error .= "invalid character string for serviceName.  Must start with a letter followed by [A-Za-z0-9_]\n" if ($serviceName =~ /^.+?[^A-Za-z0-9_]/);
+	$error .= "service name may not contain spaces or other characters invalid in a URN" if $serviceName =~ /[\/\'\\\s"\&\<\>\[\]\^\`\{\|\}\~%\!\@#\$\*\+=]/;
 
 	#	$error .="missing signatureURL \n" unless defined $signatureURL;
 	$error .= "missing authURI \n"      unless defined $AuthURI;
@@ -2946,6 +2955,7 @@ sub retrieveObjectDefinition {
 	if ( $def{description} =~ /<!\[CDATA\[((?>[^\]]+))\]\]>/ ) {
 		$def{description} = $1;
 	}
+
 	my $response;
 	$response = "<retrieveObjectDefinition>
 	<objectType lsid='$def{objectLSID}'>$def{objectType}</objectType>
@@ -2953,9 +2963,9 @@ sub retrieveObjectDefinition {
 	<authURI>$def{authURI}</authURI>
 	<contactEmail>$def{contactEmail}</contactEmail>\n";
 	my %relationships = %{ $def{Relationships} };
-
-	while ( my ( $rel, $objdefs ) = each %relationships ) {
-		$response .= "<Relationship relationshipType='$rel'>\n";
+	
+    while ( my ( $rel, $objdefs ) = each %relationships ) {
+        $response .= "<Relationship relationshipType='$rel'>\n";
 		foreach my $def ( @{$objdefs} ) {
 			my ( $lsid, $articlename,$type, $def, $auth, $contac ) = @{$def};
 			$articlename = "" unless defined $articlename;

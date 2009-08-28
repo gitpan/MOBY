@@ -1,8 +1,8 @@
-bin/scripts/moby-s-install.pl
+bin/scripts/.#moby-s-install.pl.1.14
 bin/scripts/moby-s-caching.pl
+bin/scripts/moby-s-install.pl
 bin/scripts/moby-s-update-db.pl
 Changes
-drop_tables.sql
 inc/Module/AutoInstall.pm
 inc/Module/Install.pm
 inc/Module/Install/AutoInstall.pm
@@ -12,6 +12,7 @@ inc/Module/Install/Fetch.pm
 inc/Module/Install/Include.pm
 inc/Module/Install/Makefile.pm
 inc/Module/Install/Metadata.pm
+inc/Module/Install/Scripts.pm
 inc/Module/Install/Share.pm
 inc/Module/Install/Win32.pm
 inc/Module/Install/WriteAll.pm
@@ -33,10 +34,12 @@ lib/MOBY/Async/WSRF.pm
 lib/MOBY/authority.pm
 lib/MOBY/Central.pm
 lib/MOBY/central_db_connection.pm
+lib/MOBY/Client/AsyncClient.pm
 lib/MOBY/Client/Central.pm
 lib/MOBY/Client/CollectionArticle.pm
 lib/MOBY/Client/Exception/MobyException.pm
 lib/MOBY/Client/Exception/MobyExceptionCodes.pm
+lib/MOBY/Client/MobyUnitTest.pm
 lib/MOBY/Client/OntologyServer.pm
 lib/MOBY/Client/Registration.pm
 lib/MOBY/Client/SecondaryArticle.pm
@@ -44,7 +47,6 @@ lib/MOBY/Client/Service.pm
 lib/MOBY/Client/ServiceInstance.pm
 lib/MOBY/Client/SimpleArticle.pm
 lib/MOBY/Client/SimpleInput.pm
-lib/MOBY/Client/MobyUnitTest.pm
 lib/MOBY/collection_input.pm
 lib/MOBY/collection_output.pm
 lib/MOBY/CommonSubs.pm
@@ -68,8 +70,8 @@ lib/MOBY/RDF/Ontologies/Services.pm
 lib/MOBY/RDF/Ontologies/ServiceTypes.pm
 lib/MOBY/RDF/Parsers/DatatypeParser.pm
 lib/MOBY/RDF/Parsers/NamespaceParser.pm
-lib/MOBY/RDF/Parsers/ServiceTypeParser.pm
 lib/MOBY/RDF/Parsers/ServiceParser.pm
+lib/MOBY/RDF/Parsers/ServiceTypeParser.pm
 lib/MOBY/RDF/Predicates/DC_PROTEGE.pm
 lib/MOBY/RDF/Predicates/FETA.pm
 lib/MOBY/RDF/Predicates/MOBY_PREDICATES.pm
@@ -91,6 +93,7 @@ META.yml
 README
 share/cgi/AgentRDFValidator
 share/cgi/authority.pl
+share/cgi/BioMobyWSDL
 share/cgi/GenerateRDF.cgi
 share/cgi/Moby
 share/cgi/MOBY-Admin.pl

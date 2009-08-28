@@ -4,7 +4,7 @@
 # Author: Edward Kawas <edward.kawas@gmail.com>,
 # For copyright and disclaimer see below.
 #
-# $Id: Moby,v 1.1 2008/02/21 00:21:27 kawas Exp $
+# $Id: Moby,v 1.2 2009/04/15 16:54:25 kawas Exp $
 #
 # NOTES:
 # 	1. This script can be used to test whether the various 
@@ -276,6 +276,18 @@ bioinfo.icapture.ubc.ca is alive, <a
 href="http://$location/cgi-bin/ValidateService?authority=bioinfo.icapture.ubc.ca&amp;service=getGoTerm" 
 target="_blank">click here.</a><br/>
   </p>
+</blockquote>
+<p><a href="http://$location/cgi-bin/BioMobyWSDL/">BioMobyWSDL 
+</a> - RESTful app that returns WSDL for a given service. 
+</p>
+<blockquote>
+  <p>For example,</p>
+  <ol>
+    <li><a href="http://$location/cgi-bin/BioMobyWSDL/bioinfo.icapture.ubc.ca/getGoTerm">WSDL for getGoTerm, 
+    by the authority bioinfo.icapture.ubc.ca </a></li>
+  </ol>
+  <p>All that you have to do is append <strong><em>authURI/servicename</em></strong> to the path of the script. <br/>
+  The WSDL for that service, if it exists, will be returned!</p>
 </blockquote>
 <p><a href="http://$location/cgi-bin/RESOURCES/">The Resources 'Scripts' 
 </a> - Servlets that return the RDF representations of the BioMOBY 
