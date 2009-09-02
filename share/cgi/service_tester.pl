@@ -31,7 +31,7 @@
 use strict;
 use warnings;
 
-#use MOBY::Config;
+use MOBY::Config;
 use MOBY::Client::Central;
 use SOAP::Lite;
 use XML::LibXML;
@@ -48,7 +48,7 @@ my $TIMEOUT = 20;
 my $THREAD_COUNT = 15;
 
 # the categories of services to ping
-my @CATEGORIES = qw / moby cgi /;
+my @CATEGORIES = qw / moby /;
 
 ######-------------------------------------------######
 
@@ -57,8 +57,8 @@ my $URL = $ENV{MOBY_SERVER} || 'http://moby.ucalgary.ca/moby/MOBY-Central.pl';
 my $URI = $ENV{MOBY_URI} || 'http://moby.ucalgary.ca/MOBY/Central';
 
 # The directory to store the job details
-#my $CONF  = MOBY::Config->new;
-my $DIRECTORY = '/tmp/';
+my $CONF  = MOBY::Config->new;
+my $DIRECTORY = $CONF->{mobycentral}->{service_tester_path} || '/tmp/';
 
 # hashes whose key is the service provider and the value is an array of service names
 my %ALIVE     = ();
@@ -106,7 +106,6 @@ foreach my $cat (@CATEGORIES) {
 		foreach (@$services) {
 			# ignore test services
 			next if  $_->authority eq 'samples.jmoby.net';
-			next unless $_->URL =~ m/biordf\.net/ig;
 			wait, $count-- while $count >= $THREAD_COUNT;
 			$count++;
 			my $pid = fork();
@@ -151,7 +150,7 @@ foreach my $cat (@CATEGORIES) {
 	
 					$out   =
 					  $soap->$name( SOAP::Data->type( 'string' => "$input" ) )->result;
-				} if $cat eq 'moby';
+				} unless $cat eq 'cgi';
 				# test cgi services
 				do {
 					 my $ua = LWP::UserAgent->new;
@@ -181,7 +180,7 @@ foreach my $cat (@CATEGORIES) {
 				} unless $out;
 			} else {
 				IPC::Shareable->clean_up_all;
-				die "couldn't fork: $!\n";
+				die "couldn’t fork: $!\n";
 			}
 		}
 

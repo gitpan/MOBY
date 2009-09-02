@@ -13,6 +13,10 @@
 #use SOAP::Lite +trace;
 use Test::More 'no_plan'; #skip_all => "Turned off for development"; #'no_plan';
 use strict;
+
+use FindBin qw ($Bin);
+use lib "$Bin/../lib/";
+
 use English;
 use Data::Dumper;
 #Is the client-code even installed?
@@ -138,7 +142,7 @@ isa_ok($secondary, "MOBY::Client::SecondaryArticle") or die "retrieved Secondary
 
 # Test getInputArticles with one, and with more  than one mobyData block.
 my $two_mobyDatas = <<INP_ART;
-<MOBY xmlns:moby="http://local/namespace">
+<MOBY xmlns:moby="http://www.biomoby.org/moby">
     <moby:mobyContent>
       <moby:mobyData queryID="first">
           <Simple>
@@ -160,6 +164,31 @@ isa_ok ($responses, "HASH", "response parser returned a HASH" ) or die "serviceR
 ok (scalar(@ids) == 2) or die "serviceResponseParser didn't find right number of invocation messages when two were passed\n";
 ok ($ids[0] eq "first") or die "serviceResponseParser didn't find the first query id\n";
 ok ($ids[1] eq "second") or die "serviceResponseParser didn't find the second query id that included a moby: namespace\n";
+
+# pass 2 invalid messages ... should not parse
+$two_mobyDatas = <<INP_ART;
+<MOBY xmlns:moby="http://www.local/namespace">
+    <moby:mobyContent>
+      <moby:mobyData queryID="first">
+          <Simple>
+            <Object namespace="blah" id="blah"/>
+          </Simple>
+      </moby:mobyData>
+      <moby:mobyData moby:queryID="second">
+          <Simple>
+            <Object namespace="blah" id="blah"/>
+          </Simple>
+      </moby:mobyData>
+    </moby:mobyContent>
+    </MOBY>
+INP_ART
+
+$responses = serviceResponseParser($two_mobyDatas); # returns MOBY objects
+print Dumper($responses);
+isa_ok ($responses, "HASH", "response parser returned a HASH" ) or die "serviceResponseParser didn't return a hashref for multiple input test\n";
+@ids = keys %{$responses};
+ok (scalar(@ids) == 0) or die "serviceResponseParser didn't find right number of invocation messages when two invalid ones were passed\n";
+
 
 
 my $sequence = "TAGCTGATCGAGCTGATGCTGA";

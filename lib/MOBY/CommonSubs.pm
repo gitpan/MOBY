@@ -1,4 +1,4 @@
-#$Id: CommonSubs.pm,v 1.7 2009/04/15 17:45:23 kawas Exp $
+#$Id: CommonSubs.pm,v 1.9 2009/09/01 20:13:20 kawas Exp $
 
 =head1 NAME
 
@@ -221,27 +221,36 @@ This is a service that:
 =cut
 
 package MOBY::CommonSubs;
-require Exporter;
-use XML::LibXML;
-use MOBY::CrossReference;
-use MOBY::Client::OntologyServer;
 use strict;
 use warnings;
+
+require Exporter;
+use XML::LibXML;
+
+use MOBY::CrossReference;
+use MOBY::Client::OntologyServer;
 use MOBY::Client::SimpleArticle;
 use MOBY::Client::CollectionArticle;
 use MOBY::Client::SecondaryArticle;
 use MOBY::MobyXMLConstants;
+
+# create the namespace URI 
+# can be modified by clients if they see fit using
+# $MOBY::CommonSubs::MOBY_NS
+our $MOBY_NS = 'http://www.biomoby.org/moby';
+
 use constant COLLECTION => 1;
 use constant SIMPLE     => 2;
 use constant SECONDARY  => 3;
 use constant PARAMETER  => 3;    # be friendly in case they use this instead
 use constant BE_NICE    => 1;
 use constant BE_STRICT  => 0;
+
 our @ISA       = qw(Exporter);
 our @EXPORT    = qw(COLLECTION SIMPLE SECONDARY PARAMETER BE_NICE BE_STRICT);
 
 use vars qw /$VERSION/;
-$VERSION = sprintf "%d.%02d", q$Revision: 1.7 $ =~ /: (\d+)\.(\d+)/;
+$VERSION = sprintf "%d.%02d", q$Revision: 1.9 $ =~ /: (\d+)\.(\d+)/;
 
 our %EXPORT_TAGS = (
 	all => [
@@ -378,13 +387,14 @@ sub serviceInputParser {
 	my %input_parameters;      # $input_parameters{$queryID} = [
 	foreach my $query ( @queries ) {
             my $queryID =  _getQID( $query );    # get the queryID attribute of the mobyData
+            next unless $queryID;
             my @input_articles = _getArticlesAsObjects( $query );
 	    # This is done for empty mobyData. It is a strange case
 	    # but it can happen (a service which is a random answer
 	    # generator, for instance)
 	    $input_parameters{$queryID}={};
             foreach my $article ( @input_articles ) { 
-                ${$input_parameters{$queryID}}{$article->articleName} =  $article;
+                ${$input_parameters{$queryID}}{$article->articleName} =  $article if $article and $article->articleName ne '';
             }
 	}
 	return \%input_parameters;
@@ -413,19 +423,19 @@ sub _getArticlesAsObjects {
   $moby = _string_to_DOM($moby);
   return undef unless $moby->nodeType == ELEMENT_NODE;
   return undef
-    unless ($moby->nodeName =~ /^(moby:|)mobyData$/);
+    unless ($moby->localname =~ /^mobyData$/ and ($moby->namespaceURI() ? $moby->namespaceURI() =~ m/\Q$MOBY_NS\E/i : 1));
   my @articles;
   foreach my $child ( $moby->childNodes )
     { # there may be more than one Simple/Collection per input; iterate over them
       next unless $child->nodeType == ELEMENT_NODE;    # ignore whitespace
       next
-	unless ( $child->nodeName =~ /^(moby:|)(Simple|Collection|Parameter)$/ );
+	unless ( $child->localname =~ /^(Simple|Collection|Parameter)$/ and ($child->namespaceURI() ? $child->namespaceURI() =~ m/\Q$MOBY_NS\E/i : 1));
       my $object;
-      if ( $child->nodeName =~ /^(moby:|)Simple$/ ) {
+      if ( $child->localname=~ /^Simple$/ and ($child->namespaceURI() ? $child->namespaceURI() =~ m/\Q$MOBY_NS\E/i : 1)) {
 	$object = MOBY::Client::SimpleArticle->new( XML_DOM => $child );
-      } elsif ( $child->nodeName =~ /^(moby:|)Collection$/ ) {
+      } elsif ( $child->localname=~ /^Collection$/ and ($child->namespaceURI() ? $child->namespaceURI() =~ m/\Q$MOBY_NS\E/i : 1)) {
 	$object = MOBY::Client::CollectionArticle->new( XML_DOM => $child );
-      } elsif ( $child->nodeName =~ /^(moby:|)Parameter$/ ) {
+      } elsif ( $child->localname =~ /^Parameter$/ and ($child->namespaceURI() ? $child->namespaceURI() =~ m/\Q$MOBY_NS\E/i : 1)) {
 	$object = MOBY::Client::SecondaryArticle->new( XML_DOM => $child );
       }
       next unless $object;
@@ -438,7 +448,7 @@ sub _getArticlesAsObjects {
 sub _getQID {
   my ( $XML ) = @_;
   my $moby = _string_to_DOM($XML);
-  return '' unless ( $moby->nodeName =~ /^(moby:|)mobyData$/ );
+  return '' unless ( $moby->localname =~ /^mobyData$/ and ($moby->namespaceURI() ? $moby->namespaceURI() =~ m/\Q$MOBY_NS\E/i : 1));
   my $qid =  _moby_getAttribute($moby, 'queryID' );
   $qid ||= _moby_getAttribute($moby, 'moby:queryID' );
   return defined( $qid ) ? $qid : '';
@@ -480,7 +490,7 @@ sub isSimpleArticle {
   eval { $DOM = _string_to_DOM($DOM) };
   return 0 if $@;
   $DOM = $DOM->getDocumentElement if ( $DOM->isa( "XML::LibXML::Document" ) );
-  return ($DOM->nodeName =~ /^(moby:|)Simple$/) ? 1 : 0; #Optional 'moby:' namespace prefix
+  return ($DOM->localname =~ /^Simple$/ and ($DOM->namespaceURI() ? $DOM->namespaceURI() =~ m/\Q$MOBY_NS\E/i : 1)) ? 1 : 0; #Optional 'moby:' namespace prefix
 }
 
 sub isCollectionArticle {
@@ -488,7 +498,7 @@ sub isCollectionArticle {
   eval {$DOM = _string_to_DOM($DOM) };
   return 0 if $@;
   $DOM = $DOM->getDocumentElement if ( $DOM->isa( "XML::LibXML::Document" ) );
-  return ( $DOM->nodeName =~ /^(moby\:|)Collection$/ ) ? 1 : 0; #Optional 'moby:' prefix
+  return ( $DOM->localname =~ /^Collection$/ and ($DOM->namespaceURI() ? $DOM->namespaceURI() =~ m/\Q$MOBY_NS\E/i : 1)) ? 1 : 0; #Optional 'moby:' prefix
 }
 
 sub isSecondaryArticle {
@@ -497,7 +507,7 @@ sub isSecondaryArticle {
   eval {$DOM = _string_to_DOM($XML)} ;
   return 0 if $@;
   $DOM = $DOM->getDocumentElement if ( $DOM->isa( "XML::LibXML::Document" ) );
-  return ($DOM->nodeName =~ /^(moby\:|)Parameter$/) ? 1 : 0; #Optional 'moby:' prefix
+  return ($DOM->localname =~ /^Parameter$/ and ($DOM->namespaceURI() ? $DOM->namespaceURI() =~ m/\Q$MOBY_NS\E/i : 1)) ? 1 : 0; #Optional 'moby:' prefix
 }
 
 
@@ -763,7 +773,7 @@ sub responseHeader {
   $exception ||="";
   my $xml =
     "<?xml version='1.0' encoding='UTF-8'?>"
-    . "<moby:MOBY xmlns:moby='http://www.biomoby.org/moby' xmlns='http://www.biomoby.org/moby'>"
+    . "<moby:MOBY xmlns:moby='$MOBY_NS' xmlns='$MOBY_NS'>"
     . "<moby:mobyContent moby:authority='$auth'>";
   if ($exception) {
     $xml .= "<moby:serviceNotes>$exception";
@@ -961,8 +971,8 @@ sub getCrossReferences {
   $XML = _string_to_DOM($XML);
   my @xrefs;
   my @XREFS;
-  return () if ( $XML->nodeName =~ /^(moby:|)Collection$/ );
-  if ( $XML->nodeName =~ /^(moby:|)Simple$/ ) {
+  return () if ( $XML->localname =~ /^Collection$/ and ($XML->namespaceURI() ? $XML->namespaceURI() =~ m/\Q$MOBY_NS\E/i : 1));
+  if ( $XML->localname =~ /^Simple$/ and ($XML->namespaceURI() ? $XML->namespaceURI() =~ m/\Q$MOBY_NS\E/i : 1)) {
     foreach my $child ( $XML->childNodes ) {
       next unless $child->nodeType == ELEMENT_NODE;
       $XML = $child;
@@ -971,17 +981,17 @@ sub getCrossReferences {
   }
   foreach ( $XML->childNodes ) {
     next unless (($_->nodeType == ELEMENT_NODE)
-		 || ($_->nodeName =~ /^(moby:|)CrossReference$/) );
+		 || ($_->localname && $_->localname =~ /^CrossReference$/ and ($_->namespaceURI() ? $_->namespaceURI() =~ m/\Q$MOBY_NS\E/i : 1)) );
     foreach my $xref ( $_->childNodes ) {
-      next unless ( ($xref->nodeType == ELEMENT_NODE)
-		    || ($xref->nodeName =~ /^(moby:|)(Xref|Object)$/) );
+      next unless $xref && ( ($xref->nodeType == ELEMENT_NODE)
+		    || ($xref->localname && $xref->localname =~ /^(Xref|Object)$/ and ($xref->namespaceURI() ? $xref->namespaceURI() =~ m/\Q$MOBY_NS\E/i : 1)) );
       push @xrefs, $xref;
     }
   }
   foreach ( @xrefs ) {
     my $x;
-    if ($_->nodeName =~ /^(moby:|)Xref$/) { $x = _makeXrefType( $_ ) }
-    elsif ($_->nodeName =~ /^(moby:|)Object$/) { $x = _makeObjectType( $_ ) }
+    if ($_->localname =~ /^Xref$/ and ($_->namespaceURI() ? $_->namespaceURI() =~ m/\Q$MOBY_NS\E/i : 1)) { $x = _makeXrefType( $_ ) }
+    elsif ($_->localname =~ /^Object$/ and ($_->namespaceURI() ? $_->namespaceURI() =~ m/\Q$MOBY_NS\E/i : 1)) { $x = _makeObjectType( $_ ) }
     push @XREFS, $x if $x;
   }
   return @XREFS;
@@ -1175,11 +1185,11 @@ sub _moby_getAttributeNode {
   return $xref->getAttributeNode($attr)
     if $xref->getAttributeNode($attr);
   # check for a namespaced attribute by name
-  return $xref->getAttributeNodeNS('http://www.biomoby.org/moby', $attr)
-  	if $xref->getAttributeNodeNS('http://www.biomoby.org/moby', $attr);
+  return $xref->getAttributeNodeNS($MOBY_NS, $attr)
+  	if $xref->getAttributeNodeNS($MOBY_NS, $attr);
   # check for a namespaced attribute with a prefix ... this is probably redundant!
-  return $xref->getAttributeNode( $xref->lookupNamespacePrefix('http://www.biomoby.org/moby') . ":$attr") 
-  	if $xref->lookupNamespacePrefix('http://www.biomoby.org/moby');
+  return $xref->getAttributeNode( $xref->lookupNamespacePrefix($MOBY_NS) . ":$attr") 
+  	if $xref->lookupNamespacePrefix($MOBY_NS);
   # cant find it ...
   return '';
 }
@@ -1206,11 +1216,11 @@ sub _moby_getAttribute {
   return $xref->getAttribute($attr)
     if $xref->getAttribute($attr);
   # check for a namespaced attribute by name
-  return $xref->getAttributeNS('http://www.biomoby.org/moby', $attr)
-  	if $xref->getAttributeNS('http://www.biomoby.org/moby', $attr);
+  return $xref->getAttributeNS($MOBY_NS, $attr)
+  	if $xref->getAttributeNS($MOBY_NS, $attr);
   # check for a namespaced attribute with a prefix ... this is probably redundant!
-  return $xref->getAttribute( $xref->lookupNamespacePrefix('http://www.biomoby.org/moby') . ":$attr") 
-  	if $xref->lookupNamespacePrefix('http://www.biomoby.org/moby');
+  return $xref->getAttribute( $xref->lookupNamespacePrefix($MOBY_NS) . ":$attr") 
+  	if $xref->lookupNamespacePrefix($MOBY_NS);
   # cant find it ...
   return '';
 }
@@ -1338,7 +1348,7 @@ sub _rearrange {
 sub _getQueryID {
   my ( $query ) = @_;
   $query = _string_to_XML($query);
-  return '' unless ( $query->nodeName =~ /^(moby:|)mobyData$/ ); #Eddie - unsure
+  return '' unless ( $query->localname =~ /^mobyData$/ and ($query->namespaceURI() ? $query->namespaceURI() =~ m/\Q$MOBY_NS\E/i : 1)); #Eddie - unsure
   return _moby_getAttribute($query, 'queryID' );
 }
 
@@ -1392,19 +1402,19 @@ print STDERR "the processResponse subroutine in MOBY::CommonSubs is deprecated. 
 			my $resp = $responses->get_node( $n );
 			foreach my $response_component ( $resp->childNodes ) {
 				next unless $response_component->nodeType == ELEMENT_NODE;
-				if ( $response_component->nodeName =~ /^(moby:|)Simple$/ )
+				if ( $response_component->localname =~ /^Simple$/ and ($response_component->namespaceURI() ? $response_component->namespaceURI() =~ m/\Q$MOBY_NS\E/i : 1))
 				  {
 					foreach my $Object ( $response_component->childNodes ) {
 						next unless $Object->nodeType == ELEMENT_NODE;
 						$success = 1;
 						push @objects, $Object;
 					}
-				} elsif ( $response_component->nodeName =~ /^(moby:|)Collection$/ )
+				} elsif ( $response_component->localname =~ /^(.*:|)Collection$/ and ($response_component->namespaceURI() ? $response_component->namespaceURI() =~ m/\Q$MOBY_NS\E/i : 1))
 				{
 					my @objects;
 					foreach my $simple ( $response_component->childNodes ) {
 						next unless $simple->nodeType == ELEMENT_NODE;
-						next unless ( $simple->nodeName =~ /^(moby:|)Simple$/ );
+						next unless ( $simple->localname =~ /^Simple$/ and ($simple->namespaceURI() ? $simple->namespaceURI() =~ m/\Q$MOBY_NS\E/i : 1));
 						foreach my $Object ( $simple->childNodes ) {
 							next unless $Object->nodeType == ELEMENT_NODE;
 							$success = 1;
@@ -1498,12 +1508,12 @@ print STDERR "the getArticles function of MOBY::CommonSubs is deprecated.  Pleas
   $moby = _string_to_DOM($moby);
   return undef
     unless ( ($moby->nodeType == ELEMENT_NODE)
-	     && ( $moby->nodeName =~ /^(moby:|)(queryInput|queryResponse|mobyData)$/ ) );
+	     && ( $moby->localname =~ /^(queryInput|queryResponse|mobyData)$/ and ($moby->namespaceURI() ? $moby->namespaceURI() =~ m/\Q$MOBY_NS\E/i : 1)) );
   my @articles;
   foreach my $child ( $moby->childNodes )
     { # there may be more than one Simple/Collection per input; iterate over them
       next unless ( ($child->nodeType == ELEMENT_NODE)    # ignore whitespace
-		    && ( $child->nodeName =~ /^(moby:|)(Simple|Collection|Parameter)$/ ) );
+		    && ( $child->localname =~ /^(Simple|Collection|Parameter)$/  and ($child->namespaceURI() ? $child->namespaceURI() =~ m/\Q$MOBY_NS\E/i : 1)) );
       my $articleName = _moby_getAttribute($child, 'articleName' );
       # push the named child DOM elements (which are <Simple> or <Collection>, <Parameter>)
       push @articles, [ $articleName, $child ];
@@ -1548,7 +1558,7 @@ print STDERR "the getSimpleArticleIDs function of MOBY::CommonSubs is deprecated
   foreach my $in ( @input_nodes ) {
     next unless $in;
     #$in = "<Simple><Object namespace='' id=''/></Simple>"
-    next unless $in->nodeName =~ /^(moby:|)Simple$/;    # only allow simples
+    next unless $in->localname =~ /^Simple$/ and ($in->namespaceURI() ? $in->namespaceURI() =~ m/\Q$MOBY_NS\E/i : 1);    # only allow simples
     my @simples = $in->childNodes;
     foreach ( @simples ) {    # $_ = <Object namespace='' id=''/>
       next unless $_->nodeType == ELEMENT_NODE;
@@ -1647,7 +1657,7 @@ sub getInputID {
     print STDERR "getInputID method is now deprecated.  Please use serviceInputParser or serviceResponseParser\n";
   my ( $XML ) = @_;
   my $moby = _string_to_DOM($XML);
-  return '' unless ( $moby->nodeName =~ /^(moby:|)queryInput|mobyData$/ );
+  return '' unless ( $moby->localname =~ /^queryInput|mobyData$/ and ($moby->namespaceURI() ? $moby->namespaceURI() =~ m/\Q$MOBY_NS\E/i : 1));
   my $qid =  _moby_getAttribute($moby, 'queryID' );
   $qid ||= _moby_getAttribute($moby, 'moby:queryID' );
   return defined( $qid ) ? $qid : '';
@@ -1665,19 +1675,19 @@ sub getArticlesAsObjects {
   $moby = _string_to_DOM($moby);
   return undef unless $moby->nodeType == ELEMENT_NODE;
   return undef
-    unless ($moby->nodeName =~ /^(moby:|)(queryInput|queryResponse|mobyData)$/);
+    unless ($moby->localname =~ /^(queryInput|queryResponse|mobyData)$/ and ($moby->namespaceURI() ? $moby->namespaceURI() =~ m/\Q$MOBY_NS\E/i : 1));
   my @articles;
   foreach my $child ( $moby->childNodes )
     { # there may be more than one Simple/Collection per input; iterate over them
       next unless $child->nodeType == ELEMENT_NODE;    # ignore whitespace
       next
-	unless ( $child->nodeName =~ /^(moby:|)(Simple|Collection|Parameter)$/ );
+	unless ( $child->localname =~ /^(Simple|Collection|Parameter)$/ and ($child->namespaceURI() ? $child->namespaceURI() =~ m/\Q$MOBY_NS\E/i : 1));
       my $object;
-      if ( $child->nodeName =~ /^(moby:|)Simple$/ ) {
+      if ( $child->localname =~ /^Simple$/ and ($child->namespaceURI() ? $child->namespaceURI() =~ m/\Q$MOBY_NS\E/i : 1)) {
 	$object = MOBY::Client::SimpleArticle->new( XML_DOM => $child );
-      } elsif ( $child->nodeName =~ /^(moby:|)Collection$/ ) {
+      } elsif ( $child->localname =~ /^Collection$/ and ($child->namespaceURI() ? $child->namespaceURI() =~ m/\Q$MOBY_NS\E/i : 1)) {
 	$object = MOBY::Client::CollectionArticle->new( XML_DOM => $child );
-      } elsif ( $child->nodeName =~ /^(moby:|)Parameter$/ ) {
+      } elsif ( $child->localname =~ /^Parameter$/ and ($child->namespaceURI() ? $child->namespaceURI() =~ m/\Q$MOBY_NS\E/i : 1)) {
 	$object = MOBY::Client::SecondaryArticle->new( XML_DOM => $child );
       }
       next unless $object;
@@ -1697,12 +1707,12 @@ print STDERR "the getCollectedSimples function of MOBY::CommonSubs is deprecated
   my ( $moby ) = @_;
   $moby = _string_to_DOM($moby);
   return undef unless $moby->nodeType == ELEMENT_NODE;
-  return undef unless ( $moby->nodeName =~ /^(moby\:|)Collection$/ );
+  return undef unless ( $moby->localname =~ /^Collection$/ and ($moby->namespaceURI() ? $moby->namespaceURI() =~ m/\Q$MOBY_NS\E/i : 1));
   my @articles;
   foreach my $child ( $moby->childNodes )
     { # there may be more than one Simple/Collection per input; iterate over them
       next unless $child->nodeType == ELEMENT_NODE;    # ignore whitespace
-      next unless ( $child->nodeName =~ /^(moby\:|)Simple$/ );
+      next unless ( $child->localname =~ /^Simple$/ and ($child->namespaceURI() ? $child->namespaceURI() =~ m/\Q$MOBY_NS\E/i : 1));
       push @articles, $child; # take the child elements, which are <Simple/> or <Collection/>
     }
   return @articles;    # return them.
@@ -1791,19 +1801,19 @@ print STDERR "the extractResponseArticles function of MOBY::CommonSubs is deprec
 			my $resp = $responses->get_node( $n );
 			foreach my $response_component ( $resp->childNodes ) {
 				next unless $response_component->nodeType == ELEMENT_NODE;
-				if ( $response_component->nodeName =~ /^(moby:|)Simple$/ )
+				if ( $response_component->localname =~ /^Simple$/ and ($response_component->namespaceURI() ? $response_component->namespaceURI() =~ m/\Q$MOBY_NS\E/i : 1))
 				  {
 					foreach my $Object ( $response_component->childNodes ) {
 						next unless $Object->nodeType == ELEMENT_NODE;
 						$success = 1;
 						push @objects, $Object;
 					}
-				} elsif ( $response_component->nodeName =~ /^(moby:|)Collection$/ )
+				} elsif ( $response_component->localname =~ /^Collection$/ and ($response_component->namespaceURI() ? $response_component->namespaceURI() =~ m/\Q$MOBY_NS\E/i : 1))
 				{
 					my @objects;
 					foreach my $simple ( $response_component->childNodes ) {
 						next unless $simple->nodeType == ELEMENT_NODE;
-						next unless ( $simple->nodeName =~ /^(moby:|)Simple$/ );
+						next unless ( $simple->localname =~ /^Simple$/ and ($simple->namespaceURI() ? $simple->namespaceURI() =~ m/\Q$MOBY_NS\E/i : 1));
 						foreach my $Object ( $simple->childNodes ) {
 							next unless $Object->nodeType == ELEMENT_NODE;
 							$success = 1;

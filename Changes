@@ -1,6 +1,13 @@
 Revision history for Perl extension MOBY.
 
 
+1.12
+    -  Updated CommonSubs to remove all hard coded entries for the
+       namespace prefix 'moby:'. In addition, all references to 
+       nodeName were replaced with localname so that element namespace 
+       prefixes are ignored since they dont really matter. 
+       Also, the localnames/prefixes are resolved to check the namespaceURI.
+
 1.11
 	-  Updated the Makefile.PL to handle some missing dependencies.
        Changes

@@ -1,8 +1,8 @@
-bin/scripts/.#moby-s-install.pl.1.14
 bin/scripts/moby-s-caching.pl
 bin/scripts/moby-s-install.pl
 bin/scripts/moby-s-update-db.pl
 Changes
+drop_tables.sql
 inc/Module/AutoInstall.pm
 inc/Module/Install.pm
 inc/Module/Install/AutoInstall.pm
@@ -34,7 +34,6 @@ lib/MOBY/Async/WSRF.pm
 lib/MOBY/authority.pm
 lib/MOBY/Central.pm
 lib/MOBY/central_db_connection.pm
-lib/MOBY/Client/AsyncClient.pm
 lib/MOBY/Client/Central.pm
 lib/MOBY/Client/CollectionArticle.pm
 lib/MOBY/Client/Exception/MobyException.pm
