@@ -3,7 +3,7 @@
 
 	# Define metadata
 	name 'MOBY';
-	version '1.12';
+	version '1.13';
 	license 'perl';
 	abstract
 'This distribution is for communicating with or creating your own MOBY Central registry';

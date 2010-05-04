@@ -100,7 +100,7 @@ use MOBY::Async::WSRF;
 use base qw(WSRF::FileBasedMobyResourceLifetimes);
 
 use vars qw /$VERSION/;
-$VERSION = sprintf "%d.%02d", q$Revision: 1.4 $ =~ /: (\d+)\.(\d+)/;
+$VERSION = sprintf "%d.%02d", q$Revision: 1.5 $ =~ /: (\d+)\.(\d+)/;
 
 #===============================================================================
 # async_create
@@ -180,9 +180,12 @@ my $async_submit = sub {
 	my $auth = $mobyContent->getAttribute('authority') || $mobyContent->getAttributeNS($WSRF::Constants::MOBY_MESSAGE_NS,'authority');
 	
 	# Get mobyData and iterate over them in order to run the service for each one
-	my @mobyData = ($moby->getElementsByTagNameNS($WSRF::Constants::MOBY_MESSAGE_NS,'mobyData'));
+	my @mobyData = ($mobyContent->getChildrenByTagNameNS($WSRF::Constants::MOBY_MESSAGE_NS,'mobyData'));
 
 	foreach my $mobyData (@mobyData) {
+		# This line avoids a serialization bug in XML::LibXML, which probably
+		# is inherited from libxml2
+		$mobyData->setNamespace($WSRF::Constants::MOBY_MESSAGE_NS, $mobyData->prefix(), 0);
 		my $queryID = $mobyData->getAttribute('queryID') || $mobyData->getAttributeNS($WSRF::Constants::MOBY_MESSAGE_NS,'queryID');
 		my $property_pid    = "pid_$queryID";
 		my $property_input  = "input_$queryID";

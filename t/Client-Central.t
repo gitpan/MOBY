@@ -68,10 +68,15 @@ END {
 								authURI     => 'test.suite.com' );
 	$r = $C->deregisterService( serviceName => 'myfirstservicemultiplesimples',
 								authURI     => 'test.suite.com' );
+
 	$r = $C->deregisterObjectClass( objectType => "Rubbish" );
 	$r = $C->deregisterObjectClass( objectType => "Rubbish_Art" );
+
 	$r = $C->deregisterNamespace( namespaceType => 'RubbishNamespace' );
+        $r = $C->deregisterNamespace( namespaceType => 'Rubbish:Namespace');
+
 	$r = $C->deregisterServiceType( serviceType => 'RubbishyService' );
+	$r = $C->deregisterServiceType( serviceType => 'Rubbishy:Service' );
 	$r = $C->deregisterServiceType( serviceType => 'RubbishyServiceNoParent' );
 }
 
@@ -247,6 +252,35 @@ ok( !$r->success, "Object registration correctly failed" )
 	  . $r->message );
 $r = $C->deregisterObjectClass( objectType => "Rubbish_'Art" );
 
+# confirm that we cannot register a datatype with : characters in its name
+$r = $C->registerObjectClass(
+        (
+           objectType    => "Rubbish:Art",
+           description   => "a human-readable description of the object",
+           contactEmail  => 'your@email.address',
+           authURI       => "test.suite.com",
+           Relationships => {
+                                                  ISA => [
+                                                                   {
+                                                                         object      => 'Object',
+                                                                         articleName => 'article1'
+                                                                   }
+                                                  ],
+                                                  HASA => [
+                                                                        {
+                                                                          object      => 'Object',
+                                                                          articleName => 'articleName3'
+                                                                        },
+                                                  ]
+           }
+        )
+);
+ok( !$r->success, "Object registration correctly failed" )
+  or diag(
+        "Shouldn't be possible to register Object with a ':' character in its name!"
+          . $r->message );
+$r = $C->deregisterObjectClass( objectType => "Rubbish:Art" );
+
 # confirm that we cannot register a datatype with odd characters in its name
 $r = $C->registerObjectClass(
 	(
@@ -347,6 +381,19 @@ $r = $C->registerNamespace(%Namespace);
 ok( $r->success, "Name space registration successful" )
   or diag( "Name space registration failure: " . $r->message );
 
+# check for invalid namespace registration
+
+my %InvalidNamespace = (
+                                  namespaceType => 'Rubbish:Namespace',
+                                  authURI       => 'your.authority.URI',
+                                  description   => "human readable description of namespace",
+                                  contactEmail  => 'your@address.here'
+);
+$r = $C->registerNamespace(%InvalidNamespace);
+ok( !$r->success, "Name space registration correctly failed with a ':' in the name" )
+  or diag( "Name space registration incorrectly succeeded with a ':' in the name: " . $r->message );
+$C->deregisterNamespace(%InvalidNamespace);
+
 ############     SERVICE-TYPE REGISTRATION        #############
 #this registration should fail => empty relationship type
 my %ServiceType = (
@@ -393,6 +440,19 @@ isa_ok( $r->{'isa'}->[0], "HASH" )
   or diag("Service Relationships didn't return a hash of arrayrefs of hasrefs");
 is( $r->{'isa'}->[0]->{term}, $ServiceType{Relationships}->{ISA}->[0] )
   or diag("Relationships (serviceType) doesn't have the right parentage.");
+
+# check for invalid service type
+my %InvalidServiceType = (
+                                 serviceType   => "Rubbishy:Service",
+                                 description   => "a human-readable description of the service",
+                                 contactEmail  => 'your@email.address',
+                                 authURI       => "test.suite.com",
+                                 Relationships => { ISA => ['Retrieval'] }
+);
+$r = $C->registerServiceType(%InvalidServiceType);
+ok( !$r->success, "Service Type registration with a ':' in the name correctly failed" )
+  or diag( "Service Type registration incorrectly succeeded with a ':' in the name: " . $r->message );
+$C->deregisterServiceType(%InvalidServiceType);
 
 #############        SERVICE INSTANCE REGISTRATION      ###########
 # Set up a service registration hash. We'll mess with it piece by piece in the next several tests,

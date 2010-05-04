@@ -1,4 +1,4 @@
-#$Id: Central.pm,v 1.12 2009/08/28 14:40:44 kawas Exp $
+#$Id: Central.pm,v 1.13 2010/05/03 18:34:40 kawas Exp $
 
 =head1 NAME
 
@@ -28,7 +28,7 @@ use LWP;
 use MOBY::CommonSubs;
 
 use vars qw /$VERSION/;
-$VERSION = sprintf "%d.%02d", q$Revision: 1.12 $ =~ /: (\d+)\.(\d+)/;
+$VERSION = sprintf "%d.%02d", q$Revision: 1.13 $ =~ /: (\d+)\.(\d+)/;
 
 use Encode;
 
@@ -318,7 +318,7 @@ sub registerObjectClass {
 	return &_error("Object name may not contain spaces or other characters invalid in a URN",
 		""
 	  )
-	  if $term =~ /[\/\'\\\s"\&\<\>\[\]\^\`\{\|\}\~%\!\@#\$\*\+=]/;
+	  if $term =~ /[\/\'\\\s"\&\<\>\[\]\^\`\{\|\}:\~%\!\@#\$\*\+=]/;
 	if ( $term =~ m"^(([^:/?#]+):)?(//([^/?#]*))?([^?#]*)(\?([^#]*))?(#(.*))?" )
 	{    # matches a URI
 		return &_error( "Object name may not be an URN or URI", "" ) if $1;
@@ -742,7 +742,7 @@ sub registerServiceType {
 	 return &_error("serviceType name may not contain spaces or other characters invalid in a URN",
 		""
 	  )
-	  if $term =~ /[\/\'\\\s"\&\<\>\[\]\^\`\{\|\}\~%\!\@#\$\*\+=]/;
+	  if $term =~ /[\/\'\\\s"\&\<\>\[\]\^\`\{\|\}\~%\!\@#\$\*\+=:]/;
 
 	# validate that the final ontology will be valid
 	my ( $exists, $exists_message, $existingURI ) =
@@ -1006,7 +1006,7 @@ sub registerNamespace {
 	return &_error("Namespace name may not contain spaces or other characters invalid in a URN",
 		""
 	)
-	  if $term =~ /[\/\'\\\s"\&\<\>\[\]\^\`\{\|\}\~%\!\@#\$\*\+=]/;
+	  if $term =~ /[\/\'\\\s"\&\<\>\[\]\^\`\{\|\}\~%\!\@#\$\*\+=:]/;
 	return &_error( "Malformed authURI - must not have an http:// prefix", "" )
 	  if $auth =~ '[/:]';
 	return &_error( "Malformed authURI - must take the form NNN.NNN.NNN", "" )

@@ -1,6 +1,8 @@
 Revision history for Perl extension MOBY.
 
-
+1.13
+   - fix: no longer allow colons to be used in names for terms in
+          registerX methods.
 1.12
     -  Updated CommonSubs to remove all hard coded entries for the
        namespace prefix 'moby:'. In addition, all references to 
