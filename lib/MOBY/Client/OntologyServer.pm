@@ -1,4 +1,4 @@
-#$Id: OntologyServer.pm,v 1.2 2008/09/02 13:11:40 kawas Exp $
+#$Id: OntologyServer.pm,v 1.3 2010/06/24 18:23:16 kawas Exp $
 
 =head1 NAME
 
@@ -77,7 +77,7 @@ use vars qw($AUTOLOAD);
 use LWP::UserAgent;
 
 use vars qw /$VERSION/;
-$VERSION = sprintf "%d.%02d", q$Revision: 1.2 $ =~ /: (\d+)\.(\d+)/;
+$VERSION = sprintf "%d.%02d", q$Revision: 1.3 $ =~ /: (\d+)\.(\d+)/;
 
 my $debug = 0;
 my $user_agent = "MOBY-OntologyServer-Perl"; 
@@ -127,8 +127,12 @@ sub new {
 			$self->{$attrname} = $self->_default_for( $attrname );
 		}
 	}
-	my ($ontologyserver) = _getOntologyServer();  # get default from moby central
+	# get ontology server if not defined in ENV
+	do {
+        my ($ontologyserver) = _getOntologyServer();  # get default from moby central
         $self->host($ontologyserver) if $ontologyserver;
+    } unless $ENV{MOBY_ONTOLOGYSERVER};
+    # use the ENV version if it exists
 	$self->host($ENV{MOBY_ONTOLOGYSERVER}) if ($ENV{MOBY_ONTOLOGYSERVER});  # override with user preference if set in their environment
 	return undef unless $self->host;
 	return $self;
