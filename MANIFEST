@@ -2,7 +2,6 @@ bin/scripts/moby-s-caching.pl
 bin/scripts/moby-s-install.pl
 bin/scripts/moby-s-update-db.pl
 Changes
-drop_tables.sql
 inc/Module/AutoInstall.pm
 inc/Module/Install.pm
 inc/Module/Install/AutoInstall.pm

@@ -1,5 +1,10 @@
 Revision history for Perl extension MOBY.
 
+1.15
+    - fix: There is a bug in CGI which only manifests when a server is 
+      behind more than one proxy. The bug effect is that virtual_host 
+      returns more than one host, separated by commas.
+      This fix avoids the bug just parsing the result of virtual_host method.
 1.14
     - fix: dont make an un-necessary network call when instantiating
       a MOBY::Client::OntologyServer object.

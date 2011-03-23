@@ -100,7 +100,7 @@ use MOBY::Async::WSRF;
 use base qw(WSRF::FileBasedMobyResourceLifetimes);
 
 use vars qw /$VERSION/;
-$VERSION = sprintf "%d.%02d", q$Revision: 1.5 $ =~ /: (\d+)\.(\d+)/;
+$VERSION = sprintf "%d.%02d", q$Revision: 1.6 $ =~ /: (\d+)\.(\d+)/;
 
 #===============================================================================
 # async_create
@@ -122,6 +122,10 @@ my $async_create = sub {
         my($query)=CGI->new();
         my($proto)=($query->https())?'https':'http';
         my($host)=$query->virtual_host();
+	# This line is needed to fix a bug in CGI library
+	# which only appears when the server is living behind
+	# more than one proxy
+	$host =~ s/^([^,]+),.*/$1/;
         my($port)=$query->virtual_port();
 	if(($proto eq 'http' && $port eq '80') || ($proto eq 'https' && $port eq '443')) {
 		$port='';
